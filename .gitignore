@@ -526,5 +526,5 @@ dmypy.json
 # End of https://www.toptal.com/developers/gitignore/api/python,intellij,intellij+all,intellij+iml,pycharm,pycharm+all,pycharm+iml
 
 # Start project specific gitignore
-!lib/carla/*.egg
+
 # End project specific gitignore
