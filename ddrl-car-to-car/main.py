@@ -77,7 +77,7 @@ try:
     cam_location = carla.Transform(carla.Location(x=2.2, z=0.7))
     cam_sensor = world.spawn_actor(cam_bp, cam_location, attach_to=vehicle.vehicle_actor)
 
-    # cam_sensor.listen(lambda data: cameraData(data, l_images))
+    cam_sensor.listen(lambda data: cameraData(data, l_images))
 
     # frontal long range radar
     radar_bp = blueprint_library.find("sensor.other.radar")
@@ -122,7 +122,7 @@ try:
     lidar_location = carla.Transform(carla.Location(x=0, z=1.5))
     lidar_sensor = world.spawn_actor(lidar_bp, lidar_location, attach_to=vehicle.vehicle_actor)
 
-    lidar_sensor.listen(lambda data: lidar_data(data))
+    # lidar_sensor.listen(lambda data: lidar_data(data))
 
     # lane invasion
     lane_bp = blueprint_library.find("sensor.other.lane_invasion")
@@ -150,12 +150,13 @@ try:
 
     # cam_sensor.stop()
     # radar_sensor.stop()
-    lidar_sensor.stop()
+    # lidar_sensor.stop()
     # lane_sensor.stop()
     # right_radar_sensor.stop()
     # left_radar_sensor.stop()
 
-    for im in l_images:
+    for i, im in enumerate(l_images):
+        cv2.imwrite(f"images/image{i}.png",im)
         cv2.imshow("image", im)
         cv2.waitKey(15)
 
