@@ -5,10 +5,11 @@ import math
 import cv2
 import numpy as np
 
-SHOW_PREVIEW = True
+SHOW_PREVIEW = False
 IM_WIDTH = 640
 IM_HEIGHT = 480
 SECONDS_PER_EPISODE = 10
+
 
 def move_view_to_vehicle_position(world, vehicle):
     spectator = world.get_spectator()
@@ -26,7 +27,7 @@ class CarEnv:
     def __init__(self):
         self.client = carla.Client("localhost", 2000)
         self.client.set_timeout(2.0)
-        self.world = self.client.get_world()
+        self.world = self.client.reload_world()# self.client.get_world()
         self.blueprint_library = self.world.get_blueprint_library()
         self.model_3 = self.blueprint_library.filter("model3")[0]
 
@@ -34,7 +35,7 @@ class CarEnv:
         self.collision_hist = []
         self.actor_list = []
 
-        self.transform = random.choice(self.world.get_map().get_spawn_points())
+        self.transform = self.world.get_map().get_spawn_points()[0]
         self.vehicle = self.world.spawn_actor(self.model_3, self.transform)
         move_view_to_vehicle_position(self.world, self.vehicle)
         self.actor_list.append(self.vehicle)
@@ -70,7 +71,7 @@ class CarEnv:
 
     def process_img(self, image):
         i = np.array(image.raw_data)
-        #print(i.shape)
+        # print(i.shape)
         i2 = i.reshape((self.im_height, self.im_width, 4))
         i3 = i2[:, :, :3]
         if self.SHOW_CAM:
@@ -80,14 +81,14 @@ class CarEnv:
 
     def step(self, action):
         if action == 0:
-            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=-1*self.STEER_AMT))
+            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=-1 * self.STEER_AMT))
         elif action == 1:
-            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer= 0))
+            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=0))
         elif action == 2:
-            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=1*self.STEER_AMT))
+            self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=1 * self.STEER_AMT))
 
         v = self.vehicle.get_velocity()
-        kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+        kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
 
         if len(self.collision_hist) != 0:
             done = True

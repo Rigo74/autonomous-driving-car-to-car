@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 import tensorflow as tf
-import tensorflow.python.keras.backend as backend
+# import tensorflow.python.keras.backend as backend
 from threading import Thread
 
 from tqdm import tqdm
@@ -16,8 +16,9 @@ from DQNAgent import DQNAgent
 # gpu_configuration()
 
 tf_v1 = tf.compat.v1
+backend = tf_v1.keras.backend
 
-SHOW_PREVIEW = True
+SHOW_PREVIEW = False
 IM_WIDTH = 640
 IM_HEIGHT = 480
 SECONDS_PER_EPISODE = 10
@@ -55,11 +56,10 @@ if __name__ == '__main__':
     gpu_options = tf_v1.GPUOptions(per_process_gpu_memory_fraction=MEMORY_FRACTION)
     backend.set_session(tf_v1.Session(config=tf_v1.ConfigProto(gpu_options=gpu_options)))
 
-    '''
     session = backend.get_session()
     init = tf_v1.global_variables_initializer()
     session.run(init)
-    '''
+
 
     # Create models folder
     if not os.path.isdir('models'):
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     # Create agent and environment
     agent = DQNAgent()
     env = CarEnv()
+    env.reset()
 
     # Start training thread and wait for training to be initialized
     trainer_thread = Thread(target=agent.train_in_loop, daemon=True)

@@ -10,11 +10,11 @@ from keras.models import Model
 import tensorflow as tf
 from ModifiedTensorBoard import ModifiedTensorBoard
 
-import tensorflow.python.keras.backend as backend
+# import tensorflow.python.keras.backend as backend
 
 tf_v1 = tf.compat.v1
 
-SHOW_PREVIEW = True
+SHOW_PREVIEW = False
 IM_WIDTH = 640
 IM_HEIGHT = 480
 SECONDS_PER_EPISODE = 10
