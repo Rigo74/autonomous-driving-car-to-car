@@ -1,6 +1,6 @@
 import carla
 import time
-from Vehicle import Vehicle
+from carla.Vehicle import Vehicle
 import numpy as np
 import cv2
 
@@ -18,7 +18,7 @@ def create_client(host="localhost", port=2000):
     _client.set_timeout(10.0)
     _world = _client.get_world()
     _world = _client.reload_world()
-    # _world.set_weather(carla.WeatherParameters.ClearNoon)
+    # _world.set_weather(carla_utils.WeatherParameters.ClearNoon)
     '''
     settings = _world.get_settings()
     settings.fixed_delta_seconds = 1.0/2

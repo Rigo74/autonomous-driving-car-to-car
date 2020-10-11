@@ -22,7 +22,7 @@ epsilon_interval = (
 batch_size = 32  # Size of batch taken from replay buffer
 max_steps_per_episode = 10000
 
-# Use the Baseline Atari environment because of Deepmind helper functions
+# Use the Baseline Atari carla_utils because of Deepmind helper functions
 env = make_atari("BreakoutNoFrameskip-v4")
 # Warp the frames, grey scale, stake four frame and scale to smaller ratio
 env = wrap_deepmind(env, frame_stack=True, scale=True)
@@ -99,7 +99,7 @@ while True:  # Run until solved
             action = np.random.choice(num_actions)
         else:
             # Predict action Q-values
-            # From environment state
+            # From carla_utils state
             state_tensor = tf.convert_to_tensor(state)
             state_tensor = tf.expand_dims(state_tensor, 0)
             action_probs = model(state_tensor, training=False)
@@ -110,7 +110,7 @@ while True:  # Run until solved
         epsilon -= epsilon_interval / epsilon_greedy_frames
         epsilon = max(epsilon, epsilon_min)
 
-        # Apply the sampled action in our environment
+        # Apply the sampled action in our carla_utils
         state_next, reward, done, _ = env.step(action)
         state_next = np.array(state_next)
 

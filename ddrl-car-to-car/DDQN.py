@@ -8,7 +8,7 @@ from threading import Thread
 
 from tqdm import tqdm
 
-from CarEnv import CarEnv
+from carla_utils.environment import CarEnv
 from DQNAgent import DQNAgent
 
 SHOW_PREVIEW = False
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     if not os.path.isdir('models'):
         os.makedirs('models')
 
-    # Create agent and environment
+    # Create agent and carla_utils
     agent = DQNAgent()
     env = CarEnv()
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         episode_reward = 0
         step = 1
 
-        # Reset environment and get initial state
+        # Reset carla_utils and get initial state
         current_state = env.reset()
 
         # Reset flag and start iterating until episode ends
