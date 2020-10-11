@@ -3,20 +3,13 @@ import random
 import time
 import numpy as np
 
-import tensorflow as tf
-# import tensorflow.python.keras.backend as backend
+# import tensorflow as tf
 from threading import Thread
 
 from tqdm import tqdm
 
 from CarEnv import CarEnv
 from DQNAgent import DQNAgent
-
-# from utils import gpu_configuration
-# gpu_configuration()
-
-tf_v1 = tf.compat.v1
-backend = tf_v1.keras.backend
 
 SHOW_PREVIEW = False
 IM_WIDTH = 640
@@ -50,16 +43,6 @@ if __name__ == '__main__':
     # For more repetitive results
     random.seed(1)
     np.random.seed(1)
-    tf.random.set_seed(1)
-
-    # Memory fraction, used mostly when training multiple agents
-    gpu_options = tf_v1.GPUOptions(per_process_gpu_memory_fraction=MEMORY_FRACTION)
-    backend.set_session(tf_v1.Session(config=tf_v1.ConfigProto(gpu_options=gpu_options)))
-
-    session = backend.get_session()
-    init = tf_v1.global_variables_initializer()
-    session.run(init)
-
 
     # Create models folder
     if not os.path.isdir('models'):
@@ -68,7 +51,6 @@ if __name__ == '__main__':
     # Create agent and environment
     agent = DQNAgent()
     env = CarEnv()
-    env.reset()
 
     # Start training thread and wait for training to be initialized
     trainer_thread = Thread(target=agent.train_in_loop, daemon=True)
@@ -137,8 +119,6 @@ if __name__ == '__main__':
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:]) / len(ep_rewards[-AGGREGATE_STATS_EVERY:])
             min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY:])
             max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY:])
-            agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward,
-                                           epsilon=epsilon)
 
             # Save model, but only when min reward is greater or equal a set value
             if min_reward >= MIN_REWARD:
