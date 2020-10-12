@@ -6,10 +6,10 @@ import tensorflow as tf
 from threading import Thread
 from tqdm import tqdm
 
-from environment import CarlaEnvironment
 from dqn_agent import DQNAgent
 from config import *
 from dqn_parameters import *
+from environment import CarlaEnvironment
 from rewards import *
 
 if __name__ == '__main__':

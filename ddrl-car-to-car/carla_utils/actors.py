@@ -1,7 +1,7 @@
 import numpy as np
 import carla
 import cv2
-from carla_utils import config
+from carla_utils.config import *
 
 
 class Vehicle:
@@ -45,7 +45,7 @@ class RGBCamera(Sensor):
     MODEL = "sensor.camera.rgb"
 
     def __init__(self, blueprint_library, location, attributes=[],
-                 im_width=config.DEFAULT_RGB_CAMERA_IM_WIDTH, im_height=config.DEFAULT_RGB_CAMERA_IM_HEIGHT):
+                 im_width=DEFAULT_RGB_CAMERA_IM_WIDTH, im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT):
         super().__init__(blueprint_library, self.MODEL, location, attributes)
         self.im_height = im_height
         self.im_width = im_width
@@ -54,9 +54,9 @@ class RGBCamera(Sensor):
 
     @staticmethod
     def create(blueprint_library, location,
-               im_width=config.DEFAULT_RGB_CAMERA_IM_WIDTH,
-               im_height=config.DEFAULT_RGB_CAMERA_IM_HEIGHT,
-               fov=config.DEFAULT_RGB_CAMERA_FOV):
+               im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+               im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
+               fov=DEFAULT_RGB_CAMERA_FOV):
         attributes = [
             ("image_size_x", f"{im_width}"),
             ("image_size_y", f"{im_height}"),
