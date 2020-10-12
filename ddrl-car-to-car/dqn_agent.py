@@ -8,35 +8,30 @@ from keras.optimizers import Adam
 from keras.models import Model
 from tensorflow.keras.callbacks import TensorBoard
 
-SHOW_PREVIEW = False
-IM_WIDTH = 640
-IM_HEIGHT = 480
-SECONDS_PER_EPISODE = 10
-REPLAY_MEMORY_SIZE = 5_000
-MIN_REPLAY_MEMORY_SIZE = 1_000
-MINIBATCH_SIZE = 16
-PREDICTION_BATCH_SIZE = 1
-TRAINING_BATCH_SIZE = MINIBATCH_SIZE // 4
-UPDATE_TARGET_EVERY = 5
-MODEL_NAME = "Xception"
+from config import *
+from dqn_parameters import *
 
-MEMORY_FRACTION = 0.4
-MIN_REWARD = -200
 
-EPISODES = 100
+def create_model():
+    base_model = Xception(
+        weights=None,
+        include_top=False,
+        input_shape=IMG_DIMENSION
+    )
 
-DISCOUNT = 0.99
-epsilon = 1
-EPSILON_DECAY = 0.95  ## 0.9975 99975
-MIN_EPSILON = 0.001
+    x = base_model.output
+    x = GlobalAveragePooling2D()(x)
 
-AGGREGATE_STATS_EVERY = 10
+    predictions = Dense(3, activation="linear")(x)
+    model = Model(inputs=base_model.input, outputs=predictions)
+    model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+    return model
 
 
 class DQNAgent:
     def __init__(self):
-        self.model = self.create_model()
-        self.target_model = self.create_model()
+        self.model = create_model()
+        self.target_model = create_model()
         self.target_model.set_weights(self.model.get_weights())
 
         self.replay_memory = deque(maxlen=REPLAY_MEMORY_SIZE)
@@ -48,17 +43,6 @@ class DQNAgent:
         self.last_logged_episode = 0
         self.training_initialized = False
 
-    def create_model(self):
-        base_model = Xception(weights=None, include_top=False, input_shape=(IM_HEIGHT, IM_WIDTH, 3))
-
-        x = base_model.output
-        x = GlobalAveragePooling2D()(x)
-
-        predictions = Dense(3, activation="linear")(x)
-        model = Model(inputs=base_model.input, outputs=predictions)
-        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
-        return model
-
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)
         self.replay_memory.append(transition)
@@ -67,18 +51,18 @@ class DQNAgent:
         if len(self.replay_memory) < MIN_REPLAY_MEMORY_SIZE:
             return
 
-        minibatch = random.sample(self.replay_memory, MINIBATCH_SIZE)
+        mini_batch = random.sample(self.replay_memory, MINI_BATCH_SIZE)
 
-        current_states = np.array([transition[0] for transition in minibatch]) / 255.0
+        current_states = np.array([transition[0] for transition in mini_batch]) / 255.0
         current_qs_list = self.model.predict(current_states, PREDICTION_BATCH_SIZE)
 
-        new_current_states = np.array([transition[3] for transition in minibatch]) / 255.0
+        new_current_states = np.array([transition[3] for transition in mini_batch]) / 255.0
         future_qs_list = self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE)
 
         X = []
         y = []
 
-        for index, (current_state, action, reward, new_state, done) in enumerate(minibatch):
+        for index, (current_state, action, reward, new_state, done) in enumerate(mini_batch):
             if not done:
                 max_future_q = np.max(future_qs_list[index])
                 new_q = reward + DISCOUNT * max_future_q
@@ -113,11 +97,10 @@ class DQNAgent:
             self.target_update_counter = 0
 
     def get_qs(self, state):
-        print(state)
         return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255)[0]
 
     def train_in_loop(self):
-        X = np.random.uniform(size=(1, IM_HEIGHT, IM_WIDTH, 3)).astype(np.float32)
+        X = np.random.uniform(size=IMG_DIMENSION).astype(np.float32)
         y = np.random.uniform(size=(1, 3)).astype(np.float32)
         self.model.fit(X, y, verbose=False, batch_size=1)
 

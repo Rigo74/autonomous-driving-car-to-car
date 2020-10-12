@@ -1,3 +1,5 @@
+from carla_utils.actors import RGBCamera
+
 HOST = "localhost"
 PORT = 2_000
 CLIENT_TIMEOUT = 2.0

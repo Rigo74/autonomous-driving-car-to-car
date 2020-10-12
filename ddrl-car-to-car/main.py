@@ -1,103 +1,127 @@
-import carla
+import os
+import random
 import time
-from carla.Vehicle import Vehicle
 import numpy as np
-import cv2
+import tensorflow as tf
+from threading import Thread
+from tqdm import tqdm
 
-CLIENT_ADDRESS = "localhost"
-CLIENT_PORT = 2000
+from environment import CarlaEnvironment
+from dqn_agent import DQNAgent
+from config import *
+from dqn_parameters import *
+from rewards import *
 
-IM_WIDTH = 640
-IM_HEIGHT = 480
+if __name__ == '__main__':
+    epsilon = INITIAL_EPSILON
+    # For stats
+    ep_rewards = [-200]
 
-actors = []
+    # For more repetitive results
+    random.seed(1)
+    np.random.seed(1)
+    tf.random.set_seed(1)
 
+    # Create models folder
+    if not os.path.isdir('models'):
+        os.makedirs('models')
 
-def create_client(host="localhost", port=2000):
-    _client = carla.Client(host, port)
-    _client.set_timeout(10.0)
-    _world = _client.get_world()
-    _world = _client.reload_world()
-    # _world.set_weather(carla_utils.WeatherParameters.ClearNoon)
-    '''
-    settings = _world.get_settings()
-    settings.fixed_delta_seconds = 1.0/2
-    _world.apply_settings(settings)
-    '''
-    return _client, _world
+    # Create agent and carla_utils
+    agent = DQNAgent()
+    env = CarlaEnvironment(camera_config=(
+        RGB_CAMERA_IM_WIDTH,
+        RGB_CAMERA_IM_HEIGHT,
+        RGB_CAMERA_FOV
+    ))
+    try:
+        # Start training thread and wait for training to be initialized
+        trainer_thread = Thread(target=agent.train_in_loop, daemon=True)
+        trainer_thread.start()
+        while not agent.training_initialized:
+            time.sleep(0.01)
 
+        # Initialize predictions - forst prediction takes longer as of initialization that has to be done
+        # It's better to do a first prediction then before we start iterating over episode steps
+        agent.get_qs(np.ones((env.front_camera.im_height, env.front_camera.im_width, env.front_camera.channels)))
 
-def move_view_to_vehicle_position(world, vehicle):
-    spectator = world.get_spectator()
-    transform = vehicle.get_transform()
-    spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
+        # Iterate over episodes
+        for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
+            # try:
 
+            env.collision_hist = []
 
-def cameraData(image, l_images):
-    i = np.array(image.raw_data)
-    i2 = i.reshape((IM_HEIGHT, IM_WIDTH, 4))  # RGBA
-    i3 = i2[:, :, :3]
-    l_images.append(i3)
-    return
+            # Update tensorboard step every episode
+            agent.tensorboard.step = episode
 
+            # Restarting episode - reset episode reward and step number
+            episode_reward = 0
+            step = 1
 
-try:
-    client, world = create_client(host=CLIENT_ADDRESS, port=CLIENT_PORT)
-    vehicle = Vehicle("tt")
+            # Reset carla_utils and get initial state
+            env.reset()
+            env.move_view_to_vehicle_position()
+            current_state = env.get_current_state()
+            # print("[DDQN] current state (rgb image)")
+            # print(current_state)
 
-    blueprint_library = world.get_blueprint_library()
-    vehicle_blueprint = blueprint_library.filter(vehicle.vehicle_model)[0]
+            # Reset flag and start iterating until episode ends
+            done = False
+            episode_end = time.time() + SECONDS_PER_EPISODE
 
-    spawn_point = world.get_map().get_spawn_points()[0]
-    vehicle.vehicle_actor = world.spawn_actor(vehicle_blueprint, spawn_point)
-    move_view_to_vehicle_position(world, vehicle.vehicle_actor)
+            # Play for given number of seconds only
+            while not done:
 
-    l_images = []
+                # This part stays mostly the same, the change is to query a model for Q values
+                if np.random.random() > epsilon:
+                    # Get action from Q table
+                    action = np.argmax(agent.get_qs(current_state))
+                else:
+                    # Get random action
+                    action = np.random.randint(0, 3)
+                    # This takes no time, so we add a delay matching 60 FPS (prediction above takes longer)
+                    time.sleep(1 / FPS)
 
-    # frontal camera
-    cam_bp = blueprint_library.find("sensor.camera.rgb")
-    cam_bp.set_attribute("image_size_x", f"{IM_WIDTH}")
-    cam_bp.set_attribute("image_size_y", f"{IM_HEIGHT}")
-    cam_bp.set_attribute("fov", "110")
+                new_state, reward, done, _ = env.step(action)
 
-    # x=profondità y=destra_sinistra z=altezza
-    cam_location = carla.Transform(carla.Location(x=2.2, z=0.7))
-    cam_sensor = world.spawn_actor(cam_bp, cam_location, attach_to=vehicle.vehicle_actor)
+                if episode_end < time.time():
+                    done = True
 
-    cam_sensor.listen(lambda data: cameraData(data, l_images))
+                # Transform new continous state to new discrete state and count reward
+                episode_reward += reward
 
-    # lane invasion
-    lane_bp = blueprint_library.find("sensor.other.lane_invasion")
+                # Every step we update replay memory
+                agent.update_replay_memory((current_state, action, reward, new_state, done))
 
-    # x=profondità y=destra_sinistra z=altezza
-    lane_location = carla.Transform(carla.Location())
-    lane_sensor = world.spawn_actor(lane_bp, lane_location, attach_to=vehicle.vehicle_actor)
+                current_state = new_state
+                step += 1
 
-    lane_sensor.listen(lambda data: print(data.crossed_lane_markings[0].type))
+            # End of episode - destroy agents
+            env.destroy()
 
-    actors.append(vehicle.vehicle_actor)
+            # Append episode reward to a list and log stats (every given number of episodes)
+            ep_rewards.append(episode_reward)
+            if not episode % AGGREGATE_STATS_EVERY_X_EPISODES or episode == 1:
+                average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:]) / len(
+                    ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
+                min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
+                max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
 
-    for _ in range(0, 2):
-        controls = vehicle.get_random_action()
-        print(controls)
-        vehicle.vehicle_actor.apply_control(
-            carla.VehicleControl(
-                throttle=controls["throttle"],
-                steer=controls["steer"],
-                brake=controls["brake"],
-                hand_brake=controls["handbrake"],
-                reverse=controls["reverse"]
-            ))
-        time.sleep(5)
+                # Save model, but only when min reward is greater or equal a set value
+                if min_reward >= MIN_REWARD:
+                    agent.model.save(
+                        f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
 
-    cam_sensor.stop()
-    lane_sensor.stop()
+            # Decay epsilon
+            if epsilon > FINAL_EPSILON:
+                epsilon *= EPSILON_DECAY
+                epsilon = max(FINAL_EPSILON, epsilon)
 
-    for i, im in enumerate(l_images):
-        # cv2.imwrite(f"images/image{i}.png",im)
-        cv2.imshow("image", im)
-        cv2.waitKey(15)
-
-finally:
-    for a in actors:
-        a.destroy()
+        # Set termination flag for training thread and wait for it to finish
+        agent.terminate = True
+        trainer_thread.join()
+        agent.model.save(
+            f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
+    except Exception:
+        env.destroy()
+    finally:
+        print("Terminated")

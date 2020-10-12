@@ -50,7 +50,7 @@ class RGBCamera(Sensor):
         self.im_height = im_height
         self.im_width = im_width
         self.data = np.array([])
-        self.channels = 3
+        self.channels = RGBCamera.get_number_of_channels()
 
     @staticmethod
     def create(blueprint_library, location,
@@ -67,6 +67,10 @@ class RGBCamera(Sensor):
     @staticmethod
     def create_default(blueprint_library, location):
         return RGBCamera.create(blueprint_library, location)
+
+    @staticmethod
+    def get_number_of_channels():
+        return 3
 
     # Override
     def callback(self, image):

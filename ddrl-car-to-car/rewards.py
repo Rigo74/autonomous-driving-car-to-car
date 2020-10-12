@@ -19,3 +19,7 @@ INTERSECTION_RED = -1
 WRONG_SIDE_ROAD = -1
 CRASH = -1
 PEDESTRIAN_HIT = -1
+
+###################################
+
+MIN_REWARD = -200

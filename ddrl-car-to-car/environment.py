@@ -4,16 +4,8 @@ import math
 from carla_utils.world import World
 from carla_utils.actors import RGBCamera, CollisionDetector
 from carla_utils import config
-import numpy as np
+import random
 
-SHOW_PREVIEW = False
-SECONDS_PER_EPISODE = 10
-
-
-def move_view_to_vehicle_position(world, vehicle):
-    spectator = world.get_spectator()
-    transform = vehicle.get_transform()
-    spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
 
 class CarlaEnvironment:
     STEER_AMT = 1.0
@@ -39,7 +31,7 @@ class CarlaEnvironment:
     def reset(self):
         self.actor_list = []
 
-        vehicle_location = self.carla_world.world.get_map().get_spawn_points()[0]
+        vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
         self.actor_list.append(self.vehicle.vehicle_actor)
 
@@ -49,13 +41,13 @@ class CarlaEnvironment:
         self.carla_world.attach_sensor_to_vehicle(self.vehicle, self.front_camera)
         self.actor_list.append(self.front_camera.sensor_actor)
 
+        self.collision_detector.data = []
         self.carla_world.attach_sensor_to_vehicle(self.vehicle,self.collision_detector)
         self.actor_list.append(self.collision_detector.sensor_actor)
 
-        while self.front_camera is None:
+        while self.front_camera.sensor_actor is None:
             time.sleep(0.01)
 
-        self.episode_start = time.time()
         self.vehicle.stay_still()
 
     def get_current_state(self):
@@ -82,7 +74,14 @@ class CarlaEnvironment:
             done = False
             reward = 1
 
-        if self.episode_start + SECONDS_PER_EPISODE < time.time():
-            done = True
-
         return self.get_current_state(), reward, done, None
+
+    def destroy(self):
+        for a in self.actor_list:
+            a.destroy()
+        self.actor_list = []
+
+    def move_view_to_vehicle_position(self):
+        spectator = self.carla_world.world.get_spectator()
+        transform = self.vehicle.vehicle_actor.get_transform()
+        spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
