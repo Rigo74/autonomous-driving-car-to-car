@@ -12,7 +12,8 @@ class World:
         self.blueprint_library = self.world.get_blueprint_library()
 
     def create_vehicle(self, position, model=config.DEFAULT_VEHICLE_MODEL):
-        vehicle = self.world.spawn_actor(model, position)
+        vehicle_blueprint = self.blueprint_library.filter(model)[0]
+        vehicle = self.world.spawn_actor(vehicle_blueprint, position)
         return Vehicle(vehicle_actor=vehicle)
 
     def attach_sensor_to_vehicle(self, vehicle, sensor):

@@ -8,8 +8,6 @@ from keras.optimizers import Adam
 from keras.models import Model
 from tensorflow.keras.callbacks import TensorBoard
 
-# from ModifiedTensorBoard import ModifiedTensorBoard
-
 SHOW_PREVIEW = False
 IM_WIDTH = 640
 IM_HEIGHT = 480
@@ -71,10 +69,10 @@ class DQNAgent:
 
         minibatch = random.sample(self.replay_memory, MINIBATCH_SIZE)
 
-        current_states = np.array([transition[0] for transition in minibatch]) / 255
+        current_states = np.array([transition[0] for transition in minibatch]) / 255.0
         current_qs_list = self.model.predict(current_states, PREDICTION_BATCH_SIZE)
 
-        new_current_states = np.array([transition[3] for transition in minibatch]) / 255
+        new_current_states = np.array([transition[3] for transition in minibatch]) / 255.0
         future_qs_list = self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE)
 
         X = []
@@ -98,8 +96,14 @@ class DQNAgent:
             log_this_step = True
             self.last_log_episode = self.tensorboard.step
 
-        self.model.fit(np.array(X) / 255, np.array(y), batch_size=TRAINING_BATCH_SIZE, verbose=0, shuffle=False,
-                       callbacks=[self.tensorboard] if log_this_step else None)
+        self.model.fit(
+            np.array(X) / 255.0,
+            np.array(y),
+            batch_size=TRAINING_BATCH_SIZE,
+            verbose=0,
+            shuffle=False,
+            callbacks=[self.tensorboard] if log_this_step else None
+       )
 
         if log_this_step:
             self.target_update_counter += 1
@@ -109,6 +113,7 @@ class DQNAgent:
             self.target_update_counter = 0
 
     def get_qs(self, state):
+        print(state)
         return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255)[0]
 
     def train_in_loop(self):
@@ -118,8 +123,6 @@ class DQNAgent:
 
         self.training_initialized = True
 
-        while True:
-            if self.terminate:
-                return
+        while not self.terminate:
             self.train()
             time.sleep(0.01)

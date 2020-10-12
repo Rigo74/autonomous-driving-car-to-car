@@ -34,6 +34,7 @@ class Sensor:
             self.blueprint.set_attribute(attr[0],attr[1])
         self.location = carla.Transform(location)
         self.sensor_actor = None
+        self.data = None
 
     def callback(self, data):
         raise NotImplemented()
@@ -48,16 +49,24 @@ class RGBCamera(Sensor):
         super().__init__(blueprint_library, self.MODEL, location, attributes)
         self.im_height = im_height
         self.im_width = im_width
-        self.data = []
+        self.data = np.array([])
+        self.channels = 3
+
+    @staticmethod
+    def create(blueprint_library, location,
+               im_width=config.DEFAULT_RGB_CAMERA_IM_WIDTH,
+               im_height=config.DEFAULT_RGB_CAMERA_IM_HEIGHT,
+               fov=config.DEFAULT_RGB_CAMERA_FOV):
+        attributes = [
+            ("image_size_x", f"{im_width}"),
+            ("image_size_y", f"{im_height}"),
+            ("fov", f"{fov}")
+        ]
+        return RGBCamera(blueprint_library, location, attributes)
 
     @staticmethod
     def create_default(blueprint_library, location):
-        attributes = [
-            ("image_size_x", f"{config.DEFAULT_RGB_CAMERA_IM_WIDTH}"),
-            ("image_size_y", f"{config.DEFAULT_RGB_CAMERA_IM_HEIGHT}"),
-            ("fov", f"{config.DEFAULT_RGB_CAMERA_FOV}")
-        ]
-        return RGBCamera(blueprint_library, location, attributes)
+        return RGBCamera.create(blueprint_library, location)
 
     # Override
     def callback(self, image):
