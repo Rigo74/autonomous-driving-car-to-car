@@ -59,14 +59,6 @@ import glob
 import os
 import sys
 
-try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
-
 
 # ==============================================================================
 # -- imports -------------------------------------------------------------------
@@ -564,9 +556,8 @@ class HUD(object):
             '',
             'Number of vehicles: % 8d' % len(vehicles)]
 
-        vehicle = vehicles[0]
-        waypoint = world.world.get_map().get_waypoint(vehicle.get_location(),project_to_road=True, lane_type=(carla.LaneType.Shoulder | carla.LaneType.Sidewalk))
 
+        '''
         self._info_text += [
             "Current lane type: " + str(waypoint.lane_type),
         # Check current lane change allowed
@@ -577,6 +568,7 @@ class HUD(object):
             "R lane marking type: " + str(waypoint.right_lane_marking.type),
             "R lane marking change: " + str(waypoint.right_lane_marking.lane_change)
         ]
+        '''
 
         if len(vehicles) > 1:
             self._info_text += ['Nearby vehicles:']
@@ -761,6 +753,26 @@ class LaneInvasionSensor(object):
         text = ['%r' % str(x).split()[-1] for x in lane_types]
         self.hud.notification('Crossed line %s' % ' and '.join(text))
 
+        # nostre wstyronzate
+        lane_types = set(x.lane_change for x in event.crossed_lane_markings)
+        text = ['%r' % str(x).split()[-1] for x in lane_types]
+        print('Crossed line %s' % ' and '.join(text))
+
+        '''
+        if event.crossed_lane_markings[len(event.crossed_lane_markings)-1].lane_change == carla.LaneChange.NONE:
+            print("non puoi superare")
+            vehicle = self._parent
+            world = vehicle.get_world()
+            waypoint = world.get_map().get_waypoint(vehicle.get_location(),project_to_road=True, lane_type=(carla.LaneType.Shoulder | carla.LaneType.Sidewalk))
+            print("Current lane type: " + str(waypoint.lane_type))
+            # Check current lane change allowed
+            print("Current Lane change:  " + str(waypoint.lane_change))
+            # Left and Right lane markings
+            print("L lane marking type: " + str(waypoint.left_lane_marking.type))
+            print("L lane marking change: " + str(waypoint.left_lane_marking.lane_change))
+            print("R lane marking type: " + str(waypoint.right_lane_marking.type))
+            print("R lane marking change: " + str(waypoint.right_lane_marking.lane_change))
+        '''
 
 # ==============================================================================
 # -- GnssSensor ----------------------------------------------------------------
@@ -1020,7 +1032,7 @@ def game_loop(args):
 
     try:
         client = carla.Client(args.host, args.port)
-        client.set_timeout(2.0)
+        client.set_timeout(10.0)
 
         display = pygame.display.set_mode(
             (args.width, args.height),
@@ -1066,7 +1078,7 @@ def main():
     argparser.add_argument(
         '--host',
         metavar='H',
-        default='127.0.0.1',
+        default='localhost',
         help='IP of the host server (default: 127.0.0.1)')
     argparser.add_argument(
         '-p', '--port',
