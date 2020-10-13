@@ -2,6 +2,7 @@ import carla
 import time
 import math
 import random
+from carla import TrafficLightState
 
 from carla_utils.world import World
 from carla_utils.actors import CollisionDetector
@@ -68,6 +69,7 @@ class CarlaEnvironment:
 
         v = self.vehicle.vehicle_actor.get_velocity()
         kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
+        speed_limit = self.vehicle.vehicle_actor.get_speed_limit()
 
         reward = 0
         if len(self.collision_detector.data) != 0:
@@ -75,10 +77,15 @@ class CarlaEnvironment:
             reward = CRASH
         else:
             done = False
-            reward += IN_SPEED_LIMIT if kmh <= 50 else OVER_SPEED_LIMIT
+            reward += IN_SPEED_LIMIT if kmh <= speed_limit else OVER_SPEED_LIMIT
             reward += TURN if action[1] != 0 else FORWARD
             if self.last_action[1] * action[1] < 0:
                 reward += OPPOSITE_TURN
+            is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
+            if is_at_traffic_light_red and (action[0] > 0 or (action[2] <= 0 and kmh > 0)):
+                reward += FORWARD_AT_INTERSECTION_RED
+            elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or kmh <= 0):
+                reward += STOP_AT_INTERSECTION_RED
 
 
         self.last_action = action
