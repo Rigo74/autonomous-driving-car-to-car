@@ -1,20 +1,20 @@
 import carla
 import time
 import math
-from carla_utils.world import World
-from carla_utils.actors import RGBCamera, CollisionDetector
-from carla_utils import config
 import random
+
+from carla_utils.world import World
+from carla_utils.actors import CollisionDetector
+from carla_utils.config import *
+from config import *
+from rewards import *
 
 
 class CarlaEnvironment:
     STEER_AMT = 1.0
 
     def __init__(self,
-                 camera_config=(
-                         config.DEFAULT_RGB_CAMERA_IM_WIDTH,
-                         config.DEFAULT_RGB_CAMERA_IM_HEIGHT,
-                         config.DEFAULT_RGB_CAMERA_FOV)):
+                 camera_config=(DEFAULT_RGB_CAMERA_IM_WIDTH, DEFAULT_RGB_CAMERA_IM_HEIGHT, DEFAULT_RGB_CAMERA_FOV)):
         self.carla_world = World()
         self.episode_start = time.time()
         self.actor_list = []
@@ -27,6 +27,13 @@ class CarlaEnvironment:
             fov=camera_config[2]
         )
         self.collision_detector = CollisionDetector(self.carla_world.blueprint_library)
+        self.actions = []
+        for s in STEER:
+            for t in THROTTLE:
+                self.actions.append((t, s, 0))
+            for b in BRAKE:
+                self.actions.append((0, s, b))
+        self.last_action = (0, 0, 0)
 
     def reset(self):
         self.actor_list = []
@@ -53,27 +60,28 @@ class CarlaEnvironment:
     def get_current_state(self):
         return self.front_camera.data
 
-    def step(self, action):
-        if action == 0:
-            self.vehicle.move(throttle=1.0, steer=-1 * self.STEER_AMT)
-        elif action == 1:
-            self.vehicle.move(throttle=1.0, steer=0)
-        elif action == 2:
-            self.vehicle.move(throttle=1.0, steer=1 * self.STEER_AMT)
+    def step(self, choice):
+        action = self.last_action
+        if choice < len(self.actions):
+            action = self.actions[choice]
+            self.vehicle.move(throttle=action[0], steer=action[1], brake=action[2])
 
         v = self.vehicle.vehicle_actor.get_velocity()
         kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
 
+        reward = 0
         if len(self.collision_detector.data) != 0:
             done = True
-            reward = -200
-        elif kmh < 50:
-            done = False
-            reward = -1
+            reward = CRASH
         else:
             done = False
-            reward = 1
+            reward += IN_SPEED_LIMIT if kmh <= 50 else OVER_SPEED_LIMIT
+            reward += TURN if action[1] != 0 else FORWARD
+            if self.last_action[1] * action[1] < 0:
+                reward += OPPOSITE_TURN
 
+
+        self.last_action = action
         return self.get_current_state(), reward, done, None
 
     def destroy(self):
