@@ -5,7 +5,7 @@ import random
 from carla import TrafficLightState
 
 from carla_utils.world import World
-from carla_utils.actors import CollisionDetector
+from carla_utils.actors import CollisionDetector, LaneInvasionDetector
 from carla_utils.config import *
 from config import *
 from rewards import *
@@ -28,12 +28,14 @@ class CarlaEnvironment:
             fov=camera_config[2]
         )
         self.collision_detector = CollisionDetector(self.carla_world.blueprint_library)
-        self.actions = []
+        self.lane_invasion_detector = LaneInvasionDetector(self.carla_world.blueprint_library)
+        actions = set()
         for s in STEER:
             for t in THROTTLE:
-                self.actions.append((t, s, 0))
+                actions.add((t, s, 0))
             for b in BRAKE:
-                self.actions.append((0, s, b))
+                actions.add((0, s, b))
+        self.actions = list(actions)
         self.last_action = (0, 0, 0)
 
     def reset(self):

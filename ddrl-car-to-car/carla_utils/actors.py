@@ -31,7 +31,7 @@ class Sensor:
     def __init__(self, blueprint_library, model, location=carla.Location(), attributes=[]):
         self.blueprint = blueprint_library.find(model)
         for attr in attributes:
-            self.blueprint.set_attribute(attr[0],attr[1])
+            self.blueprint.set_attribute(attr[0], attr[1])
         self.location = carla.Transform(location)
         self.sensor_actor = None
         self.data = None
@@ -93,3 +93,15 @@ class CollisionDetector(Sensor):
     # Override
     def callback(self, event):
         self.data.append(event)
+
+
+class LaneInvasionDetector(Sensor):
+    MODEL = "sensor.other.lane_invasion"
+
+    def __init__(self, blueprint_library):
+        super().__init__(blueprint_library, self.MODEL)
+        self.data = []
+
+    # Override
+    def callback(self, lane_invasion_event):
+        self.data += lane_invasion_event.crossed_lane_markings
