@@ -27,3 +27,6 @@ class World:
         for sensor in sensors:
             result.append(self.attach_sensor_to_vehicle(vehicle, sensor))
         return result
+
+    def get_map(self):
+        return self.world.get_map()

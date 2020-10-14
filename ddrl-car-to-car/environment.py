@@ -39,26 +39,30 @@ class CarlaEnvironment:
         self.last_action = (0, 0, 0)
 
     def reset(self):
-        self.actor_list = []
+        self.actor_list.clear()
 
         vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
         self.actor_list.append(self.vehicle.vehicle_actor)
 
         self.vehicle.stay_still()
-        time.sleep(4)
+        self.attach_sensor_to_vehicle(self.front_camera)
 
-        self.carla_world.attach_sensor_to_vehicle(self.vehicle, self.front_camera)
-        self.actor_list.append(self.front_camera.sensor_actor)
+        self.collision_detector.data.clear()
+        self.attach_sensor_to_vehicle(self.collision_detector)
 
-        self.collision_detector.data = []
-        self.carla_world.attach_sensor_to_vehicle(self.vehicle,self.collision_detector)
-        self.actor_list.append(self.collision_detector.sensor_actor)
+        self.lane_invasion_detector.data.clear()
+        self.attach_sensor_to_vehicle(self.lane_invasion_detector)
 
-        while self.front_camera.sensor_actor is None:
+        self.wait_environment_ready()
+
+    def wait_environment_ready(self):
+        while any(x is None for x in self.actor_list):
             time.sleep(0.01)
 
-        self.vehicle.stay_still()
+    def attach_sensor_to_vehicle(self, sensor):
+        self.carla_world.attach_sensor_to_vehicle(self.vehicle, sensor)
+        self.actor_list.append(sensor.sensor_actor)
 
     def get_current_state(self):
         return self.front_camera.data
@@ -88,15 +92,46 @@ class CarlaEnvironment:
                 reward += FORWARD_AT_INTERSECTION_RED
             elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or kmh <= 0):
                 reward += STOP_AT_INTERSECTION_RED
+            if len(self.lane_invasion_detector.data) > 0:
+                '''
+                lane_changes_not_allowed = filter(lambda x: self.is_lane_change_not_allowed(x.lane_change),
+                                                  self.lane_invasion_detector.data)
 
+                lane_changes = map(lambda x: x.lane_change, lane_changes_not_allowed)
+                '''
+                lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
+                                               for x in self.lane_invasion_detector.data)
+                if lane_changes_not_allowed:
+                    waypoint = self.carla_world.get_map().get_waypoint(
+                        self.vehicle.get_location(),
+                        project_to_road=True,
+                        lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+                    )
+                    # se driving => contromano | corsia sbagliata
+                    #`se shoulder | sidewalk => siamo fuori strada
+                    if waypoint.lane_type == carla.LaneType.Driving:
+                        reward += WRONG_SIDE_ROAD
+                    elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
+                        reward += OFF_ROAD
+                    else:
+                        reward += WRONG_SIDE_ROAD
+                else:
+                    # superato linea permessa centrale ma siamo contro mano
+                    pass
 
         self.last_action = action
         return self.get_current_state(), reward, done, None
 
+    def is_lane_change_not_allowed(self, lane_change):
+        steer = self.last_action[1]
+        return lane_change == carla.LaneChange.NONE \
+                or (lane_change == carla.LaneChange.Right and steer < 0) \
+                or (lane_change == carla.LaneChange.Left and steer > 0)
+
     def destroy(self):
         for a in self.actor_list:
             a.destroy()
-        self.actor_list = []
+        self.actor_list.clear()
 
     def move_view_to_vehicle_position(self):
         spectator = self.carla_world.world.get_spectator()

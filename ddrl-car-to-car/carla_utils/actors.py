@@ -25,6 +25,9 @@ class Vehicle:
             )
         )
 
+    def get_location(self):
+        return self.vehicle_actor.get_location()
+
 
 class Sensor:
 

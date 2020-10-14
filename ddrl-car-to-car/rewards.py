@@ -11,10 +11,11 @@ OPPOSITE_TURN = -0.2 # prima giri in una direzione e subito dopo nell'altra
 STOP_AT_INTERSECTION_GREEN = -0.3 # non usato
 OVER_SPEED_LIMIT = -0.4
 FORWARD_AT_INTERSECTION_RED = -1
-WRONG_SIDE_ROAD = -1
+WRONG_SIDE_ROAD = -0.95 # non possiamo saperla senza fare follie quindi per adesso è anche corsia sbagliata ma ne giusto senso di marcia
+OFF_ROAD = -1
 CRASH = -1
 PEDESTRIAN_HIT = -1
 
 ###################################
 
-MIN_REWARD = -200
+MIN_REWARD = -3
