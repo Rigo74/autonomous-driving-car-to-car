@@ -15,7 +15,7 @@ from rewards import *
 if __name__ == '__main__':
     epsilon = INITIAL_EPSILON
     # For stats
-    ep_rewards = [-200]
+    ep_rewards = [MIN_REWARD]
 
     # For more repetitive results
     random.seed(1)
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
             # Reset carla_utils and get initial state
             env.reset()
-            env.move_view_to_vehicle_position()
+            # env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
             # print("[DDQN] current state (rgb image)")
             # print(current_state)
@@ -121,7 +121,9 @@ if __name__ == '__main__':
         trainer_thread.join()
         agent.model.save(
             f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
-    except Exception:
+    except Exception as ex:
+        print("[SEVERE] Exception raised: ")
+        print(ex)
         env.destroy()
     finally:
         print("Terminated")

@@ -37,6 +37,7 @@ class CarlaEnvironment:
                 actions.add((0, s, b))
         self.actions = list(actions)
         self.last_action = (0, 0, 0)
+        self.car_is_stopped_since = 0
 
     def reset(self):
         self.actor_list.clear()
@@ -68,6 +69,7 @@ class CarlaEnvironment:
         return self.front_camera.data
 
     def step(self, choice):
+        print(choice)
         action = self.last_action
         if choice < len(self.actions):
             action = self.actions[choice]
@@ -76,6 +78,11 @@ class CarlaEnvironment:
         v = self.vehicle.vehicle_actor.get_velocity()
         kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
         speed_limit = self.vehicle.vehicle_actor.get_speed_limit()
+        min_speed_limit = speed_limit * MINIMUM_SPEED_LIMIT_PERCENTAGE
+        if self.car_is_stopped_since == -1 and kmh <= 0:
+            self.car_is_stopped_since = time.time()
+        elif kmh > 0:
+            self.car_is_stopped_since = -1
 
         reward = 0
         if len(self.collision_detector.data) != 0:
@@ -83,22 +90,25 @@ class CarlaEnvironment:
             reward = CRASH
         else:
             done = False
-            reward += IN_SPEED_LIMIT if kmh <= speed_limit else OVER_SPEED_LIMIT
+            is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
+            if kmh > speed_limit:
+                reward += OVER_SPEED_LIMIT
+            elif kmh < min_speed_limit and not is_at_traffic_light_red:
+                reward += UNDER_MINIMUM_SPEED_LIMIT
+            elif kmh >= min_speed_limit:
+                reward += IN_SPEED_LIMIT
+            if self.car_is_stopped_since != -1 and not is_at_traffic_light_red:
+                stopped_time = time.time() - self.car_is_stopped_since
+                if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
+                    reward += STOPPED_TOO_LONG
             reward += TURN if action[1] != 0 else FORWARD
             if self.last_action[1] * action[1] < 0:
                 reward += OPPOSITE_TURN
-            is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
             if is_at_traffic_light_red and (action[0] > 0 or (action[2] <= 0 and kmh > 0)):
                 reward += FORWARD_AT_INTERSECTION_RED
             elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or kmh <= 0):
                 reward += STOP_AT_INTERSECTION_RED
             if len(self.lane_invasion_detector.data) > 0:
-                '''
-                lane_changes_not_allowed = filter(lambda x: self.is_lane_change_not_allowed(x.lane_change),
-                                                  self.lane_invasion_detector.data)
-
-                lane_changes = map(lambda x: x.lane_change, lane_changes_not_allowed)
-                '''
                 lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
                                                for x in self.lane_invasion_detector.data)
                 if lane_changes_not_allowed:
@@ -108,7 +118,7 @@ class CarlaEnvironment:
                         lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
                     )
                     # se driving => contromano | corsia sbagliata
-                    #`se shoulder | sidewalk => siamo fuori strada
+                    # `se shoulder | sidewalk => siamo fuori strada
                     if waypoint.lane_type == carla.LaneType.Driving:
                         reward += WRONG_SIDE_ROAD
                     elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
@@ -125,8 +135,8 @@ class CarlaEnvironment:
     def is_lane_change_not_allowed(self, lane_change):
         steer = self.last_action[1]
         return lane_change == carla.LaneChange.NONE \
-                or (lane_change == carla.LaneChange.Right and steer < 0) \
-                or (lane_change == carla.LaneChange.Left and steer > 0)
+               or (lane_change == carla.LaneChange.Right and steer < 0) \
+               or (lane_change == carla.LaneChange.Left and steer > 0)
 
     def destroy(self):
         for a in self.actor_list:

@@ -1,5 +1,5 @@
 TURN = 0.1
-IN_SPEED_LIMIT = 0.2
+IN_SPEED_LIMIT = 0.1
 FORWARD_AT_INTERSECTION_ORANGE = 0.2 # non usato
 FORWARD = 0.4
 STOP_AT_INTERSECTION_ORANGE = 0.4 # non usato
@@ -8,6 +8,8 @@ FORWARD_AT_INTERSECTION_GREEN = 0.6 # non usato
 TARGET_REACHED = 1 # nel nostro caso non avverrà mai
 
 OPPOSITE_TURN = -0.2 # prima giri in una direzione e subito dopo nell'altra
+UNDER_MINIMUM_SPEED_LIMIT = -0.3
+STOPPED_TOO_LONG = -0.3
 STOP_AT_INTERSECTION_GREEN = -0.3 # non usato
 OVER_SPEED_LIMIT = -0.4
 FORWARD_AT_INTERSECTION_RED = -1
@@ -18,4 +20,4 @@ PEDESTRIAN_HIT = -1
 
 ###################################
 
-MIN_REWARD = -3
+MIN_REWARD = -50

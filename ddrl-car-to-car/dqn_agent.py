@@ -22,7 +22,7 @@ def create_model():
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
 
-    predictions = Dense(3, activation="linear")(x)
+    predictions = Dense(26, activation="linear")(x)
     model = Model(inputs=base_model.input, outputs=predictions)
     model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
     return model
@@ -97,12 +97,12 @@ class DQNAgent:
             self.target_update_counter = 0
 
     def get_qs(self, state):
-        return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255)[0]
+        return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255.0)[0]
 
     def train_in_loop(self):
         input_size = (1, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_IM_WIDTH, RGBCamera.get_number_of_channels())
         X = np.random.uniform(size=input_size).astype(np.float32)
-        y = np.random.uniform(size=(1, 3)).astype(np.float32)
+        y = np.random.uniform(size=(1, 26)).astype(np.float32)
         self.model.fit(X, y, verbose=False, batch_size=1)
 
         self.training_initialized = True
