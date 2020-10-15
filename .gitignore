@@ -528,5 +528,6 @@ dmypy.json
 # Start project specific gitignore
 
 ddrl-car-to-car/logs/
+ddrl-car-to-car/models/
 
 # End project specific gitignore
