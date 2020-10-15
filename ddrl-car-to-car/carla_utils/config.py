@@ -1,6 +1,6 @@
 HOST = "localhost"
 PORT = 2_000
-CLIENT_TIMEOUT = 2.0
+CLIENT_TIMEOUT = 10.0
 
 DEFAULT_VEHICLE_MODEL = "vehicle.audi.tt"
 

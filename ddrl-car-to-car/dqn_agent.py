@@ -2,36 +2,18 @@ import random
 import time
 import numpy as np
 from collections import deque
-from keras.applications.xception import Xception
-from keras.layers import Dense, GlobalAveragePooling2D
-from keras.optimizers import Adam
-from keras.models import Model
 from tensorflow.keras.callbacks import TensorBoard
 
 from config import *
 from dqn_parameters import *
-
-
-def create_model():
-    base_model = Xception(
-        weights=None,
-        include_top=False,
-        input_shape=IMG_DIMENSION
-    )
-
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-
-    predictions = Dense(26, activation="linear")(x)
-    model = Model(inputs=base_model.input, outputs=predictions)
-    model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
-    return model
+import models
 
 
 class DQNAgent:
-    def __init__(self):
-        self.model = create_model()
-        self.target_model = create_model()
+    def __init__(self, model_name, number_of_actions):
+        self.number_of_actions = number_of_actions
+        self.model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
+        self.target_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
         self.target_model.set_weights(self.model.get_weights())
 
         self.replay_memory = deque(maxlen=REPLAY_MEMORY_SIZE)
@@ -102,7 +84,7 @@ class DQNAgent:
     def train_in_loop(self):
         input_size = (1, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_IM_WIDTH, RGBCamera.get_number_of_channels())
         X = np.random.uniform(size=input_size).astype(np.float32)
-        y = np.random.uniform(size=(1, 26)).astype(np.float32)
+        y = np.random.uniform(size=(1, self.number_of_actions)).astype(np.float32)
         self.model.fit(X, y, verbose=False, batch_size=1)
 
         self.training_initialized = True

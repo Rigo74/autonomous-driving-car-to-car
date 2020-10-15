@@ -25,6 +25,12 @@ class Vehicle:
             )
         )
 
+    def get_speed(self):
+        return self.vehicle_actor.get_velocity()
+
+    def get_speed_limit(self):
+        return self.vehicle_actor.get_speed_limit()
+
     def get_location(self):
         return self.vehicle_actor.get_location()
 

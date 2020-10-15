@@ -27,12 +27,13 @@ if __name__ == '__main__':
         os.makedirs('models')
 
     # Create agent and carla_utils
-    agent = DQNAgent()
     env = CarlaEnvironment(camera_config=(
         RGB_CAMERA_IM_WIDTH,
         RGB_CAMERA_IM_HEIGHT,
         RGB_CAMERA_FOV
     ))
+    agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
+
     try:
         # Start training thread and wait for training to be initialized
         trainer_thread = Thread(target=agent.train_in_loop, daemon=True)
@@ -47,8 +48,6 @@ if __name__ == '__main__':
         # Iterate over episodes
         for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
             # try:
-
-            env.collision_hist = []
 
             # Update tensorboard step every episode
             agent.tensorboard.step = episode
@@ -77,11 +76,11 @@ if __name__ == '__main__':
                     action = np.argmax(agent.get_qs(current_state))
                 else:
                     # Get random action
-                    action = np.random.randint(0, 3)
+                    action = np.random.randint(0, env.get_number_of_actions())
                     # This takes no time, so we add a delay matching 60 FPS (prediction above takes longer)
                     time.sleep(1 / FPS)
 
-                new_state, reward, done, _ = env.step(action)
+                new_state, reward, done = env.step(action)
 
                 if episode_end < time.time():
                     done = True
@@ -105,6 +104,8 @@ if __name__ == '__main__':
                     ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
                 min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
                 max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
+
+                print(f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:

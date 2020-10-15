@@ -11,6 +11,16 @@ from config import *
 from rewards import *
 
 
+def create_actions_list():
+    actions = set()
+    for s in STEER:
+        for t in THROTTLE:
+            actions.add((t, s, 0))
+        for b in BRAKE:
+            actions.add((0, s, b))
+    return list(actions)
+
+
 class CarlaEnvironment:
     STEER_AMT = 1.0
 
@@ -35,7 +45,7 @@ class CarlaEnvironment:
                 actions.add((t, s, 0))
             for b in BRAKE:
                 actions.add((0, s, b))
-        self.actions = list(actions)
+        self.actions = create_actions_list()
         self.last_action = (0, 0, 0)
         self.car_is_stopped_since = 0
 
@@ -68,21 +78,16 @@ class CarlaEnvironment:
     def get_current_state(self):
         return self.front_camera.data
 
+    def get_number_of_actions(self):
+        return len(self.actions) + 1
+
     def step(self, choice):
-        print(choice)
         action = self.last_action
         if choice < len(self.actions):
             action = self.actions[choice]
             self.vehicle.move(throttle=action[0], steer=action[1], brake=action[2])
 
-        v = self.vehicle.vehicle_actor.get_velocity()
-        kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
-        speed_limit = self.vehicle.vehicle_actor.get_speed_limit()
-        min_speed_limit = speed_limit * MINIMUM_SPEED_LIMIT_PERCENTAGE
-        if self.car_is_stopped_since == -1 and kmh <= 0:
-            self.car_is_stopped_since = time.time()
-        elif kmh > 0:
-            self.car_is_stopped_since = -1
+        current_speed, speed_limit, min_speed_limit = self.evaluate_speed_values()
 
         reward = 0
         if len(self.collision_detector.data) != 0:
@@ -91,46 +96,112 @@ class CarlaEnvironment:
         else:
             done = False
             is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
-            if kmh > speed_limit:
-                reward += OVER_SPEED_LIMIT
-            elif kmh < min_speed_limit and not is_at_traffic_light_red:
-                reward += UNDER_MINIMUM_SPEED_LIMIT
-            elif kmh >= min_speed_limit:
-                reward += IN_SPEED_LIMIT
-            if self.car_is_stopped_since != -1 and not is_at_traffic_light_red:
-                stopped_time = time.time() - self.car_is_stopped_since
-                if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
-                    reward += STOPPED_TOO_LONG
-            reward += TURN if action[1] != 0 else FORWARD
-            if self.last_action[1] * action[1] < 0:
-                reward += OPPOSITE_TURN
-            if is_at_traffic_light_red and (action[0] > 0 or (action[2] <= 0 and kmh > 0)):
-                reward += FORWARD_AT_INTERSECTION_RED
-            elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or kmh <= 0):
-                reward += STOP_AT_INTERSECTION_RED
+
+            reward += self.evaluate_speed_reward(
+                current_speed=current_speed,
+                speed_limit=speed_limit,
+                min_speed_limit=min_speed_limit,
+                is_at_traffic_light_red=is_at_traffic_light_red
+            )
+
+            reward += self.evaluate_action_reward(
+                current_action=action,
+                current_speed=current_speed,
+                is_at_traffic_light_red=is_at_traffic_light_red
+            )
+
             if len(self.lane_invasion_detector.data) > 0:
-                lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
-                                               for x in self.lane_invasion_detector.data)
-                if lane_changes_not_allowed:
-                    waypoint = self.carla_world.get_map().get_waypoint(
-                        self.vehicle.get_location(),
-                        project_to_road=True,
-                        lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
-                    )
-                    # se driving => contromano | corsia sbagliata
-                    # `se shoulder | sidewalk => siamo fuori strada
-                    if waypoint.lane_type == carla.LaneType.Driving:
-                        reward += WRONG_SIDE_ROAD
-                    elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
-                        reward += OFF_ROAD
-                    else:
-                        reward += WRONG_SIDE_ROAD
-                else:
-                    # superato linea permessa centrale ma siamo contro mano
-                    pass
+                reward += self.evaluate_reward_for_crossing_line()
 
         self.last_action = action
-        return self.get_current_state(), reward, done, None
+        return self.get_current_state(), reward, done
+
+    def evaluate_speed_values(self):
+        v = self.vehicle.get_speed()
+        kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
+        speed_limit = self.vehicle.get_speed_limit()
+        min_speed_limit = speed_limit * MINIMUM_SPEED_LIMIT_PERCENTAGE
+        if self.car_is_stopped_since == -1 and kmh <= 0:
+            self.car_is_stopped_since = time.time()
+        elif kmh > 0:
+            self.car_is_stopped_since = -1
+        return kmh, speed_limit, min_speed_limit
+
+    def evaluate_speed_reward(self, current_speed, speed_limit, min_speed_limit, is_at_traffic_light_red):
+        if current_speed > speed_limit:
+            return OVER_SPEED_LIMIT
+        elif current_speed >= min_speed_limit:
+            return IN_SPEED_LIMIT
+
+        reward = UNDER_MINIMUM_SPEED_LIMIT \
+            if (current_speed < min_speed_limit and not is_at_traffic_light_red) \
+            else 0
+        if self.car_is_stopped_since != -1 and not is_at_traffic_light_red:
+            stopped_time = time.time() - self.car_is_stopped_since
+            if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
+                reward += STOPPED_TOO_LONG
+        return reward
+
+    '''
+    if current_speed > speed_limit:
+        reward += OVER_SPEED_LIMIT
+    elif current_speed < min_speed_limit and not is_at_traffic_light_red:
+        reward += UNDER_MINIMUM_SPEED_LIMIT
+    elif current_speed >= min_speed_limit:
+        reward += IN_SPEED_LIMIT
+    if self.car_is_stopped_since != -1 and not is_at_traffic_light_red:
+        stopped_time = time.time() - self.car_is_stopped_since
+        if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
+            reward += STOPPED_TOO_LONG
+    '''
+
+    def evaluate_action_reward(self, current_action, current_speed, is_at_traffic_light_red):
+        throttle = current_action[0]
+        steer = current_action[1]
+        brake = current_action[2]
+        partial_reward = OPPOSITE_TURN if (self.last_action[1] * steer < 0) else 0
+        if is_at_traffic_light_red and (throttle > 0 or (brake <= 0 and current_speed > 0)):
+            return partial_reward + FORWARD_AT_INTERSECTION_RED
+        elif is_at_traffic_light_red and throttle == 0 and (brake > 0 or current_speed <= 0):
+            return partial_reward + STOP_AT_INTERSECTION_RED
+        elif steer != 0:
+            return TURN
+        else:
+            return FORWARD
+
+    '''
+        if self.last_action[1] * action[1] < 0:
+            reward += OPPOSITE_TURN
+        elif action[1] != 0:
+            reward += TURN
+        else:
+            reward += FORWARD
+        if is_at_traffic_light_red and (action[0] > 0 or (action[2] <= 0 and current_speed > 0)):
+            reward += FORWARD_AT_INTERSECTION_RED
+        elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or current_speed <= 0):
+            reward += STOP_AT_INTERSECTION_RED
+    '''
+
+    def evaluate_reward_for_crossing_line(self):
+        lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
+                                       for x in self.lane_invasion_detector.data)
+        if lane_changes_not_allowed:
+            waypoint = self.carla_world.get_map().get_waypoint(
+                self.vehicle.get_location(),
+                project_to_road=True,
+                lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+            )
+            # se driving => contromano | corsia sbagliata
+            # `se shoulder | sidewalk => siamo fuori strada
+            if waypoint.lane_type == carla.LaneType.Driving:
+                return WRONG_SIDE_ROAD
+            elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
+                return OFF_ROAD
+            else:
+                return WRONG_SIDE_ROAD
+        else:
+            # superato linea permessa centrale ma siamo contro mano
+            return 0
 
     def is_lane_change_not_allowed(self, lane_change):
         steer = self.last_action[1]
