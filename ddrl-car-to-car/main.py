@@ -7,10 +7,21 @@ from threading import Thread
 from tqdm import tqdm
 
 from dqn_agent import DQNAgent
-from config import *
 from dqn_parameters import *
 from environment import CarlaEnvironment
 from rewards import *
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
 
 if __name__ == '__main__':
     epsilon = INITIAL_EPSILON
@@ -105,7 +116,8 @@ if __name__ == '__main__':
                 min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
                 max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
 
-                print(f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
+                print(
+                    f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:

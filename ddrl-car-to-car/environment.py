@@ -2,6 +2,7 @@ import carla
 import time
 import math
 import random
+import numpy as np
 from carla import TrafficLightState
 
 from carla_utils.world import World
@@ -39,15 +40,14 @@ class CarlaEnvironment:
         )
         self.collision_detector = CollisionDetector(self.carla_world.blueprint_library)
         self.lane_invasion_detector = LaneInvasionDetector(self.carla_world.blueprint_library)
-        actions = set()
-        for s in STEER:
-            for t in THROTTLE:
-                actions.add((t, s, 0))
-            for b in BRAKE:
-                actions.add((0, s, b))
         self.actions = create_actions_list()
         self.last_action = (0, 0, 0)
         self.car_is_stopped_since = 0
+        self.last_road_id = 0
+        self.last_lane_id = 0
+        self.previous_lane_waypoint = None
+        self.in_correct_lane_side = True
+        self.in_lane = True
 
     def reset(self):
         self.actor_list.clear()
@@ -66,6 +66,16 @@ class CarlaEnvironment:
         self.attach_sensor_to_vehicle(self.lane_invasion_detector)
 
         self.wait_environment_ready()
+
+        self.previous_lane_waypoint = self.carla_world.get_map().get_waypoint(
+            self.vehicle.get_location(),
+            project_to_road=True,
+            lane_type=carla.LaneType.Driving
+        )
+        self.last_road_id = self.previous_lane_waypoint.road_id
+        self.last_lane_id = self.previous_lane_waypoint.lane_id
+        self.in_correct_lane_side = True
+        self.in_lane = True
 
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
@@ -111,7 +121,7 @@ class CarlaEnvironment:
             )
 
             if len(self.lane_invasion_detector.data) > 0:
-                reward += self.evaluate_reward_for_crossing_line()
+                reward += self.evaluate_crossing_line_reward()
 
         self.last_action = action
         return self.get_current_state(), reward, done
@@ -142,19 +152,6 @@ class CarlaEnvironment:
                 reward += STOPPED_TOO_LONG
         return reward
 
-    '''
-    if current_speed > speed_limit:
-        reward += OVER_SPEED_LIMIT
-    elif current_speed < min_speed_limit and not is_at_traffic_light_red:
-        reward += UNDER_MINIMUM_SPEED_LIMIT
-    elif current_speed >= min_speed_limit:
-        reward += IN_SPEED_LIMIT
-    if self.car_is_stopped_since != -1 and not is_at_traffic_light_red:
-        stopped_time = time.time() - self.car_is_stopped_since
-        if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
-            reward += STOPPED_TOO_LONG
-    '''
-
     def evaluate_action_reward(self, current_action, current_speed, is_at_traffic_light_red):
         throttle = current_action[0]
         steer = current_action[1]
@@ -169,39 +166,68 @@ class CarlaEnvironment:
         else:
             return FORWARD
 
-    '''
-        if self.last_action[1] * action[1] < 0:
-            reward += OPPOSITE_TURN
-        elif action[1] != 0:
-            reward += TURN
-        else:
-            reward += FORWARD
-        if is_at_traffic_light_red and (action[0] > 0 or (action[2] <= 0 and current_speed > 0)):
-            reward += FORWARD_AT_INTERSECTION_RED
-        elif is_at_traffic_light_red and action[0] == 0 and (action[2] > 0 or current_speed <= 0):
-            reward += STOP_AT_INTERSECTION_RED
-    '''
-
-    def evaluate_reward_for_crossing_line(self):
+    def evaluate_crossing_line_reward(self):
         lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
                                        for x in self.lane_invasion_detector.data)
+        waypoint = self.carla_world.get_map().get_waypoint(
+            self.vehicle.get_location(),
+            project_to_road=True,
+            lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+        )
+        vehicle_transform = self.vehicle.vehicle_actor.get_transform()
         if lane_changes_not_allowed:
-            waypoint = self.carla_world.get_map().get_waypoint(
-                self.vehicle.get_location(),
-                project_to_road=True,
-                lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
-            )
-            # se driving => contromano | corsia sbagliata
-            # `se shoulder | sidewalk => siamo fuori strada
             if waypoint.lane_type == carla.LaneType.Driving:
-                return WRONG_SIDE_ROAD
+                return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else WRONG_LANE
             elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
                 return OFF_ROAD
             else:
-                return WRONG_SIDE_ROAD
+                return WRONG_LANE
         else:
-            # superato linea permessa centrale ma siamo contro mano
-            return 0
+            return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else 0
+
+    def is_wrong_side_road(self, lane_waypoint, vehicle_transform):
+        current_road_id = lane_waypoint.road_id
+        current_lane_id = lane_waypoint.lane_id
+
+        if (self.last_road_id != current_road_id or self.last_lane_id != current_lane_id) \
+                and not lane_waypoint.is_junction:
+            next_waypoints = lane_waypoint.next(NEXT_WAYPOINT_DISTANCE)
+            if len(next_waypoints) <= 0:
+                return
+
+            previous_lane_direction = self.previous_lane_waypoint.transform.get_forward_vector()
+            current_lane_direction = lane_waypoint.transform.get_forward_vector()
+
+            p_lane_vector = np.array([previous_lane_direction.x, previous_lane_direction.y])
+            c_lane_vector = np.array([current_lane_direction.x, current_lane_direction.y])
+
+            waypoint_angle = math.degrees(
+                math.acos(np.clip(np.dot(p_lane_vector, c_lane_vector) /
+                                  (np.linalg.norm(p_lane_vector) * np.linalg.norm(c_lane_vector)), -1.0, 1.0)))
+            if not self.is_side_changed(waypoint_angle, self.in_lane):
+                self.in_lane = True
+
+            if self.previous_lane_waypoint.is_junction:
+                next_waypoint = next_waypoints[0]
+                vector_wp = np.array([next_waypoint.transform.location.x - lane_waypoint.transform.location.x,
+                                      next_waypoint.transform.location.y - lane_waypoint.transform.location.y])
+                vector_actor = np.array([math.cos(math.radians(vehicle_transform.rotation.yaw)),
+                                         math.sin(math.radians(vehicle_transform.rotation.yaw))])
+                vehicle_lane_angle = math.degrees(
+                    math.acos(np.clip(np.dot(vector_actor, vector_wp) / (np.linalg.norm(vector_wp)), -1.0, 1.0)))
+                self.is_side_changed(vehicle_lane_angle)
+
+        self.last_lane_id = current_lane_id
+        self.last_road_id = current_road_id
+        self.previous_lane_waypoint = lane_waypoint
+        return not self.in_correct_lane_side
+
+    def is_side_changed(self, angle, in_lane=True):
+        if angle > MINIMUM_ANGLE_TO_SIDE_CHANGE and in_lane:
+            self.in_correct_lane_side = not self.in_correct_lane_side
+            self.in_lane = False
+            return True
+        return False
 
     def is_lane_change_not_allowed(self, lane_change):
         steer = self.last_action[1]

@@ -4,8 +4,8 @@ INITIAL_EPSILON = 1  # initial value of epsilon
 FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY = 0.95  # 0.9975 99975
 
-EPISODES = 1000 # 100
-SECONDS_PER_EPISODE = 40 # 10
+EPISODES = 1000  # 100
+SECONDS_PER_EPISODE = 40  # 10
 AGGREGATE_STATS_EVERY_X_EPISODES = 50
 
 MODEL_NAME = XceptionModel.get_model_name()

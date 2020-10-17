@@ -15,10 +15,10 @@ def create_model_from_name(model_name, number_of_actions):
     elif model_name == Cnn4LayersWithSpeed.get_model_name():
         return Cnn4LayersWithSpeed.create_model(number_of_actions)
     else:
-        return None
+        raise ValueError(f"The chosen model ({model_name}) is not available")
 
 
-class XceptionModel:
+class XceptionModel(object):
 
     @staticmethod
     def get_model_name():
@@ -41,7 +41,7 @@ class XceptionModel:
         return model
 
 
-class Cnn4Layers:
+class Cnn4Layers(object):
 
     @staticmethod
     def get_model_name():
@@ -78,7 +78,7 @@ class Cnn4Layers:
         return model
 
 
-class Cnn4LayersWithSpeed:
+class Cnn4LayersWithSpeed(object):
 
     @staticmethod
     def get_model_name():

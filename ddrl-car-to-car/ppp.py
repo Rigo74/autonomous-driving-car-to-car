@@ -743,6 +743,16 @@ class LaneInvasionSensor(object):
         # reference.
         weak_self = weakref.ref(self)
         self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))
+        ###nostre robe
+        self._last_road_id = 0
+        self._last_lane_id = 0
+        self._previous_lane_waypoint = world.get_map().get_waypoint(
+            parent_actor.get_location(),
+            project_to_road=True,
+            lane_type=carla.LaneType.Driving
+        )
+        self._in_lane = True
+        self.pappa = True
 
     @staticmethod
     def _on_invasion(weak_self, event):
@@ -754,11 +764,74 @@ class LaneInvasionSensor(object):
         self.hud.notification('Crossed line %s' % ' and '.join(text))
 
         # nostre wstyronzate
+        lane_waypoint = self._parent.get_world().get_map().get_waypoint(
+            self._parent.get_location(),
+            project_to_road=True,
+            lane_type=(carla.LaneType.Driving | carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+        )
+        current_road_id = lane_waypoint.road_id
+        current_lane_id = lane_waypoint.lane_id
+
+        if (self.last_road_id != current_road_id or self.last_lane_id != current_lane_id) \
+                and not lane_waypoint.is_junction:
+            next_waypoint = lane_waypoint.next(2.0)[0]
+
+            if not next_waypoint:
+                return
+
+            # The waypoint route direction can be considered continuous.
+            # Therefore just check for a big gap in waypoint directions.
+            previous_lane_direction = self.previous_lane_waypoint.transform.get_forward_vector()
+            current_lane_direction = lane_waypoint.transform.get_forward_vector()
+
+            p_lane_vector = np.array([previous_lane_direction.x, previous_lane_direction.y])
+            c_lane_vector = np.array([current_lane_direction.x, current_lane_direction.y])
+
+            waypoint_angle = math.degrees(
+                math.acos(np.clip(np.dot(p_lane_vector, c_lane_vector) /
+                                  (np.linalg.norm(p_lane_vector) * np.linalg.norm(c_lane_vector)), -1.0, 1.0)))
+
+            print(f"angle detected = {waypoint_angle}")
+
+            if waypoint_angle > 100 and self.in_lane:
+                print("Entering wrong lane" if self.in_correct_lane_side else "Returning to correct lane")
+                self.in_correct_lane_side = not self.in_correct_lane_side
+                self.in_lane = False
+                self.wrong_lane_start_location = self._parent.get_location()
+            else:
+                self.in_lane = True
+
+            # Continuity is broken after a junction so check vehicle-lane angle instead
+            if self.previous_lane_waypoint.is_junction:
+                print("car in junction")
+
+                vector_wp = np.array([next_waypoint.transform.location.x - lane_waypoint.transform.location.x,
+                                      next_waypoint.transform.location.y - lane_waypoint.transform.location.y])
+
+                vector_actor = np.array([math.cos(math.radians(self._parent.get_transform().rotation.yaw)),
+                                         math.sin(math.radians(self._parent.get_transform().rotation.yaw))])
+
+                vehicle_lane_angle = math.degrees(
+                    math.acos(np.clip(np.dot(vector_actor, vector_wp) / (np.linalg.norm(vector_wp)), -1.0, 1.0)))
+
+                print(f"lane angle detected = {vehicle_lane_angle}")
+
+                if vehicle_lane_angle > 100:
+                    print("Entering wrong lane" if self.in_correct_lane_side else "Returning to correct lane")
+                    self.in_correct_lane_side = not self.in_correct_lane_side
+                    self.in_lane = False
+                    self.wrong_lane_start_location = self._parent.get_location()
+        
+        # Remember the last state
+        self.last_lane_id = current_lane_id
+        self.last_road_id = current_road_id
+        self.previous_lane_waypoint = lane_waypoint
+
+        '''
         lane_types = set(x.lane_change for x in event.crossed_lane_markings)
         text = ['%r' % str(x).split()[-1] for x in lane_types]
         print('Crossed line %s' % ' and '.join(text))
 
-        '''
         if event.crossed_lane_markings[len(event.crossed_lane_markings)-1].lane_change == carla.LaneChange.NONE:
             print("non puoi superare")
             vehicle = self._parent
