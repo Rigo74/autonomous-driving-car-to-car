@@ -122,6 +122,8 @@ class CarlaEnvironment:
 
             if len(self.lane_invasion_detector.data) > 0:
                 reward += self.evaluate_crossing_line_reward()
+            else:
+                reward += CORRECT_SIDE_ROAD if self.in_correct_lane_side else WRONG_SIDE_ROAD
 
         self.last_action = action
         return self.get_current_state(), reward, done
@@ -183,7 +185,7 @@ class CarlaEnvironment:
             else:
                 return WRONG_LANE
         else:
-            return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else 0
+            return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else CORRECT_SIDE_ROAD
 
     def is_wrong_side_road(self, lane_waypoint, vehicle_transform):
         current_road_id = lane_waypoint.road_id
