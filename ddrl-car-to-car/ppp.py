@@ -1151,7 +1151,7 @@ def main():
     argparser.add_argument(
         '--host',
         metavar='H',
-        default='localhost',
+        default='93.66.187.114',#'localhost',
         help='IP of the host server (default: 127.0.0.1)')
     argparser.add_argument(
         '-p', '--port',

@@ -1,4 +1,6 @@
 import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
 import numpy as np
@@ -18,12 +20,18 @@ if gpus:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        # print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
         # Memory growth must be set before GPUs have been initialized
         print(e)
 
+
+def generate_model_name(max_reward, average_reward, min_reward):
+    return f"{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model"
+
+
 if __name__ == '__main__':
+    max_reward = average_reward = min_reward = 0
     epsilon = INITIAL_EPSILON
     # For stats
     ep_rewards = [MIN_REWARD]
@@ -121,8 +129,7 @@ if __name__ == '__main__':
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:
-                    agent.model.save(
-                        f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
+                    agent.save_model(generate_model_name(max_reward,average_reward,min_reward))
 
             # Decay epsilon
             if epsilon > FINAL_EPSILON:
@@ -132,8 +139,7 @@ if __name__ == '__main__':
         # Set termination flag for training thread and wait for it to finish
         agent.terminate = True
         trainer_thread.join()
-        agent.model.save(
-            f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
+        agent.save_model(generate_model_name(max_reward,average_reward,min_reward))
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

@@ -1,16 +1,18 @@
 import random
 import time
+import threading
 import numpy as np
 from collections import deque
 from tensorflow.keras.callbacks import TensorBoard
 
-from config import *
 from dqn_parameters import *
+from config import *
 import models
 
 
 class DQNAgent:
     def __init__(self, model_name, number_of_actions):
+        self.model_lock = threading.Lock()
         self.number_of_actions = number_of_actions
         self.model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
         self.target_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
@@ -69,7 +71,7 @@ class DQNAgent:
             verbose=0,
             shuffle=False,
             callbacks=[self.tensorboard] if log_this_step else None
-       )
+        )
 
         if log_this_step:
             self.target_update_counter += 1
@@ -81,6 +83,15 @@ class DQNAgent:
     def get_qs(self, state):
         return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255.0)[0]
 
+    def save_model(self, name):
+        try:
+            self.model_lock.acquire(True)
+            self.model.save(f'models/{name}')
+            self.model_lock.release()
+        except Exception as ex:
+            print("[SEVERE] Exception raised while saving: ")
+            print(ex)
+
     def train_in_loop(self):
         input_size = (1, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_IM_WIDTH, RGBCamera.get_number_of_channels())
         X = np.random.uniform(size=input_size).astype(np.float32)
@@ -90,5 +101,7 @@ class DQNAgent:
         self.training_initialized = True
 
         while not self.terminate:
+            self.model_lock.acquire(True)
             self.train()
+            self.model_lock.release()
             time.sleep(0.01)
