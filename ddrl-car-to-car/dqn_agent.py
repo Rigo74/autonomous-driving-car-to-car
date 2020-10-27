@@ -1,6 +1,7 @@
 import random
 import time
 import threading
+import keras
 import numpy as np
 from collections import deque
 from tensorflow.keras.callbacks import TensorBoard
@@ -26,6 +27,10 @@ class DQNAgent:
         self.terminate = False
         self.last_logged_episode = 0
         self.training_initialized = False
+
+    def load_model(self, model_path):
+        self.model = keras.models.load_model(model_path)
+        self.target_model = keras.models.load_model(model_path)
 
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)

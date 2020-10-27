@@ -91,11 +91,15 @@ class CarlaEnvironment:
     def get_number_of_actions(self):
         return len(self.actions) + 1
 
-    def step(self, choice):
+    def do_action(self, choice):
         action = self.last_action
         if choice < len(self.actions):
             action = self.actions[choice]
             self.vehicle.move(throttle=action[0], steer=action[1], brake=action[2])
+        return action
+
+    def step(self, choice):
+        action = self.do_action(choice)
 
         current_speed, speed_limit, min_speed_limit = self.evaluate_speed_values()
 

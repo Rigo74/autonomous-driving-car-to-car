@@ -27,8 +27,9 @@ if gpus:
 
 
 def generate_model_name(max_reward, average_reward, min_reward):
-    return f"{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model"
+    return f"{MODEL_NAME}__{int(time.time())}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.model"
 
+trained_model_name = "Xception__1603752821___185.20max__-35.17avg__-79.05min.model"
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
@@ -52,6 +53,7 @@ if __name__ == '__main__':
         RGB_CAMERA_FOV
     ))
     agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
+    agent.load_model(trained_model_name)
 
     try:
         # Start training thread and wait for training to be initialized

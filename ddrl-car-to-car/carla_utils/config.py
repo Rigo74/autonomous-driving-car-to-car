@@ -1,4 +1,4 @@
-HOST = "93.66.187.114"#"localhost"
+HOST = "localhost"#"localhost"
 PORT = 2_000
 CLIENT_TIMEOUT = 10.0
 
