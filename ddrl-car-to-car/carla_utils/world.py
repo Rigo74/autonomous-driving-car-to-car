@@ -8,7 +8,7 @@ class World:
     def __init__(self, host=config.HOST, port=config.PORT):
         self.client = carla.Client(host, port)
         self.client.set_timeout(config.CLIENT_TIMEOUT)
-        self.world = self.client.get_world()
+        self.world = self.client.reload_world()  # self.client.get_world()
         self.blueprint_library = self.world.get_blueprint_library()
 
     def create_vehicle(self, position, model=config.DEFAULT_VEHICLE_MODEL):

@@ -17,7 +17,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "Xception__1603752821___185.20max__-35.17avg__-79.05min.model"
+model_name = "models/Cnn4Layers__1605280124__100ep___138.70max___38.38avg__-77.45min.model"
 
 if __name__ == '__main__':
 
@@ -31,7 +31,9 @@ if __name__ == '__main__':
     try:
         env.reset()
         model = keras.models.load_model(model_name)
-        print(env.get_number_of_actions())
+
+        env.move_view_to_vehicle_position()
+        # env.vehicle.move(throttle=1.0)
 
         while True:
             state = env.get_current_state()

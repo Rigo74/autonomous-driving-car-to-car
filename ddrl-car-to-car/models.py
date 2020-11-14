@@ -14,6 +14,8 @@ def create_model_from_name(model_name, number_of_actions):
         return Cnn4Layers.create_model(number_of_actions)
     elif model_name == Cnn4LayersWithSpeed.get_model_name():
         return Cnn4LayersWithSpeed.create_model(number_of_actions)
+    elif model_name == Cnn64x3.get_model_name():
+        return Cnn64x3.create_model(number_of_actions)
     else:
         raise ValueError(f"The chosen model ({model_name}) is not available")
 
@@ -121,3 +123,34 @@ class Cnn4LayersWithSpeed(object):
     
         return model
     '''
+
+
+class Cnn64x3(object):
+
+    @staticmethod
+    def get_model_name():
+        return "Cnn64x3"
+
+    @staticmethod
+    def create_model(number_of_actions):
+        model = Sequential()
+
+        model.add(Conv2D(64, (3, 3), input_shape=IMG_DIMENSION, padding='same'))
+        model.add(Activation('relu'))
+        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+
+        model.add(Conv2D(64, (3, 3), padding='same'))
+        model.add(Activation('relu'))
+        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+
+        model.add(Conv2D(64, (3, 3), padding='same'))
+        model.add(Activation('relu'))
+        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+
+        model.add(Flatten())
+
+        model.add(Dense(number_of_actions, activation="linear"))
+
+        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+
+        return model

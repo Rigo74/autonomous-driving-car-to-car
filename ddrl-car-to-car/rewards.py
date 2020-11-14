@@ -1,7 +1,7 @@
 TARGET_REACHED = 1 # nel nostro caso non avverrà mai
 STOP_AT_INTERSECTION_RED = 0.6
 CORRECT_SIDE_ROAD = 0 # 0.5
-FORWARD = 0.25
+FORWARD = 0.4
 TURN = 0.1
 IN_SPEED_LIMIT = 0 # 0.1
 
@@ -19,7 +19,7 @@ PEDESTRIAN_HIT = -1
 
 ###################################
 
-MIN_REWARD = -200
+MIN_REWARD = -300
 
 # FORWARD_AT_INTERSECTION_GREEN = 0.6
 # STOP_AT_INTERSECTION_ORANGE = 0.4

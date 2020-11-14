@@ -29,8 +29,9 @@ class DQNAgent:
         self.training_initialized = False
 
     def load_model(self, model_path):
-        self.model = keras.models.load_model(model_path)
-        self.target_model = keras.models.load_model(model_path)
+        if model_path is not None:
+            self.model = keras.models.load_model(model_path)
+            self.target_model = keras.models.load_model(model_path)
 
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)

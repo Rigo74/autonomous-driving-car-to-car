@@ -19,23 +19,24 @@ if gpus:
         # Currently, memory growth needs to be the same across GPUs
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
-        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        # logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         # print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
         # Memory growth must be set before GPUs have been initialized
         print(e)
 
 
-def generate_model_name(max_reward, average_reward, min_reward):
-    return f"{MODEL_NAME}__{int(time.time())}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.model"
+def generate_model_name(max_reward, average_reward, min_reward, episode):
+    return f"{MODEL_NAME}__{int(time.time())}__{episode}ep__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.model"
 
-trained_model_name = "Xception__1603752821___185.20max__-35.17avg__-79.05min.model"
+
+trained_model_name = "models/Cnn4Layers__1605280124__100ep___138.70max___38.38avg__-77.45min.model"
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
     epsilon = INITIAL_EPSILON
     # For stats
-    ep_rewards = [MIN_REWARD]
+    ep_rewards = [-33.80]
 
     # For more repetitive results
     random.seed(1)
@@ -131,7 +132,7 @@ if __name__ == '__main__':
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:
-                    agent.save_model(generate_model_name(max_reward,average_reward,min_reward))
+                    agent.save_model(generate_model_name(max_reward, average_reward, min_reward, episode))
 
             # Decay epsilon
             if epsilon > FINAL_EPSILON:
@@ -141,7 +142,7 @@ if __name__ == '__main__':
         # Set termination flag for training thread and wait for it to finish
         agent.terminate = True
         trainer_thread.join()
-        agent.save_model(generate_model_name(max_reward,average_reward,min_reward))
+        agent.save_model(generate_model_name(max_reward, average_reward, min_reward, agent.tensorboard.step))
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)
