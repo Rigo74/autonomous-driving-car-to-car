@@ -30,7 +30,7 @@ def generate_model_name(max_reward, average_reward, min_reward, episode):
     return f"{MODEL_NAME}__{int(time.time())}__{episode}ep__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.model"
 
 
-trained_model_name = "models/Cnn4Layers__1605280124__100ep___138.70max___38.38avg__-77.45min.model"
+trained_model_name = None #"models/Cnn4Layers__1605280124__100ep___138.70max___38.38avg__-77.45min.model"
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
