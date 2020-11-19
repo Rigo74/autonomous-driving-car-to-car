@@ -75,8 +75,9 @@ class Cnn4Layers(object):
     @staticmethod
     def create_model(number_of_actions):
         model = Cnn4Layers.create_image_model()
+        model.add(Dense(128, activation="relu"))
         model.add(Dense(number_of_actions, activation="linear"))
-        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+        model.compile(loss="huber_loss", optimizer=Adam(lr=0.001), metrics=["accuracy"])
         return model
 
 
@@ -94,11 +95,11 @@ class Cnn4LayersWithSpeed(object):
         inputs.append(speed_input)
 
         x = Concatenate()([image_model.output, speed_input])
-        x = Dense(number_of_actions, activation='relu')(x)
+        x = Dense(128, activation="relu")(x)
         predictions = Dense(number_of_actions, activation='linear')(x)
 
         model = Model(inputs=inputs, outputs=predictions)
-        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+        model.compile(loss="huber_loss", optimizer=Adam(lr=0.001), metrics=["accuracy"])
 
         return model
 
@@ -149,8 +150,10 @@ class Cnn64x3(object):
 
         model.add(Flatten())
 
+        model.add(Dense(128, activation="relu"))
+
         model.add(Dense(number_of_actions, activation="linear"))
 
-        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+        model.compile(loss="huber_loss", optimizer=Adam(lr=0.001), metrics=["accuracy"])
 
         return model

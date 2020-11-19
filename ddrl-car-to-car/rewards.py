@@ -3,7 +3,7 @@ STOP_AT_INTERSECTION_RED = 0.6
 CORRECT_SIDE_ROAD = 0 # 0.5
 FORWARD = 0.4
 TURN = 0.1
-IN_SPEED_LIMIT = 0 # 0.1
+IN_SPEED_LIMIT = 0  # 0.1
 
 OPPOSITE_TURN = -0.2 # prima giri in una direzione e subito dopo nell'altra
 UNDER_MINIMUM_SPEED_LIMIT = 0 # -0.3

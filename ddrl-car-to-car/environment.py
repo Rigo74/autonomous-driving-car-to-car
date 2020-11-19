@@ -25,8 +25,7 @@ def create_actions_list():
 class CarlaEnvironment:
     STEER_AMT = 1.0
 
-    def __init__(self,
-                 camera_config=(DEFAULT_RGB_CAMERA_IM_WIDTH, DEFAULT_RGB_CAMERA_IM_HEIGHT, DEFAULT_RGB_CAMERA_FOV)):
+    def __init__(self, camera_config=(RGB_CAMERA_IM_WIDTH, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_FOV)):
         self.carla_world = World()
         self.episode_start = time.time()
         self.actor_list = []
@@ -104,30 +103,38 @@ class CarlaEnvironment:
         current_speed, speed_limit, min_speed_limit = self.evaluate_speed_values()
 
         reward = 0
+        done = False
         if len(self.collision_detector.data) != 0:
             done = True
             reward = CRASH
         else:
-            done = False
             is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
 
-            reward += self.evaluate_speed_reward(
+            speed_reward = self.evaluate_speed_reward(
                 current_speed=current_speed,
                 speed_limit=speed_limit,
                 min_speed_limit=min_speed_limit,
                 is_at_traffic_light_red=is_at_traffic_light_red
             )
+            #print(f"[SPEED_REWARD] {speed_reward}")
+            reward += speed_reward
 
-            reward += self.evaluate_action_reward(
+            action_reward = self.evaluate_action_reward(
                 current_action=action,
                 current_speed=current_speed,
                 is_at_traffic_light_red=is_at_traffic_light_red
             )
+            #print(f"[ACTION_REWARD] {action_reward}")
+            reward += action_reward
 
             if len(self.lane_invasion_detector.data) > 0:
-                reward += self.evaluate_crossing_line_reward()
+                crossing_line_reward = self.evaluate_crossing_line_reward()
+                #print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
+                reward += crossing_line_reward
             else:
-                reward += CORRECT_SIDE_ROAD if self.in_correct_lane_side else WRONG_SIDE_ROAD
+                road_side_reward = CORRECT_SIDE_ROAD if self.in_correct_lane_side else WRONG_SIDE_ROAD
+                #print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
+                reward += road_side_reward
 
         self.last_action = action
         return self.get_current_state(), reward, done
@@ -162,15 +169,16 @@ class CarlaEnvironment:
         throttle = current_action[0]
         steer = current_action[1]
         brake = current_action[2]
-        partial_reward = OPPOSITE_TURN if (self.last_action[1] * steer < 0) else 0
+        is_opposite_turn = self.last_action[1] * steer < 0
+        partial_reward = OPPOSITE_TURN if is_opposite_turn else 0
         if is_at_traffic_light_red and (throttle > 0 or (brake <= 0 and current_speed > 0)):
             return partial_reward + FORWARD_AT_INTERSECTION_RED
         elif is_at_traffic_light_red and throttle == 0 and (brake > 0 or current_speed <= 0):
             return partial_reward + STOP_AT_INTERSECTION_RED
-        elif steer != 0:
-            return TURN
+        elif current_speed > 0 and not is_opposite_turn:
+            return TURN if steer != 0 else FORWARD
         else:
-            return FORWARD
+            return partial_reward
 
     def evaluate_crossing_line_reward(self):
         lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)

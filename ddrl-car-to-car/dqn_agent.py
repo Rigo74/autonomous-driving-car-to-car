@@ -2,13 +2,22 @@ import random
 import time
 import threading
 import keras
+import os
 import numpy as np
 from collections import deque
-from tensorflow.keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard
+import tensorflow as tf
 
 from dqn_parameters import *
 from config import *
 import models
+
+MODELS_FOLDER = "models"
+LOGS_FOLDER = "logs"
+
+# Custom Metrics
+REWARD = "reward"
+EPSILON = "epsilon"
 
 
 class DQNAgent:
@@ -21,15 +30,31 @@ class DQNAgent:
 
         self.replay_memory = deque(maxlen=REPLAY_MEMORY_SIZE)
 
-        self.tensorboard = TensorBoard(log_dir=f"logs/{MODEL_NAME}-{int(time.time())}")
+        self.identifier = int(time.time())
+        self.model_name = f"{MODEL_NAME}_{self.identifier}"
+
+        model_logs_folder = f"{LOGS_FOLDER}/{self.model_name}"
+
+        file_writer = tf.summary.create_file_writer(model_logs_folder + "/metrics")
+        file_writer.set_as_default()
+
+        self.tensorboard = TensorBoard(log_dir=model_logs_folder)
         self.target_update_counter = 0
 
         self.terminate = False
         self.last_logged_episode = 0
         self.training_initialized = False
 
-    def load_model(self, model_path):
-        if model_path is not None:
+        if not os.path.isdir(MODELS_FOLDER):
+            os.makedirs(MODELS_FOLDER)
+
+    def log_metrics(self, reward, epsilon):
+        tf.summary.scalar(REWARD, data=reward, step=self.tensorboard.step)
+        tf.summary.scalar(EPSILON, data=epsilon, step=self.tensorboard.step)
+
+    def load_model(self, model_name):
+        model_path = f"{MODELS_FOLDER}/{model_name}"
+        if model_name is not None:
             self.model = keras.models.load_model(model_path)
             self.target_model = keras.models.load_model(model_path)
 
@@ -68,7 +93,7 @@ class DQNAgent:
         log_this_step = False
         if self.tensorboard.step > self.last_logged_episode:
             log_this_step = True
-            self.last_log_episode = self.tensorboard.step
+            self.last_logged_episode = self.tensorboard.step
 
         self.model.fit(
             np.array(X) / 255.0,
@@ -79,21 +104,19 @@ class DQNAgent:
             callbacks=[self.tensorboard] if log_this_step else None
         )
 
-        if log_this_step:
-            self.target_update_counter += 1
+        self.target_update_counter += 1
 
-        if self.target_update_counter > UPDATE_TARGET_EVERY:
+        if self.target_update_counter > UPDATE_TARGET_EVERY_X_STEPS:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
 
     def get_qs(self, state):
-        return self.model.predict(np.array(state).reshape(-1, *state.shape) / 255.0)[0]
+        prediction_input = np.array(state).reshape(-1, *state.shape) / 255.0
+        return self.do_synchronized(lambda: self.model.predict(prediction_input))[0]
 
-    def save_model(self, name):
+    def save_model(self, name_appendix):
         try:
-            self.model_lock.acquire(True)
-            self.model.save(f'models/{name}')
-            self.model_lock.release()
+            self.do_synchronized(lambda: self.model.save(f'{MODELS_FOLDER}/{self.model_name}_{name_appendix}'))
         except Exception as ex:
             print("[SEVERE] Exception raised while saving: ")
             print(ex)
@@ -102,12 +125,16 @@ class DQNAgent:
         input_size = (1, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_IM_WIDTH, RGBCamera.get_number_of_channels())
         X = np.random.uniform(size=input_size).astype(np.float32)
         y = np.random.uniform(size=(1, self.number_of_actions)).astype(np.float32)
-        self.model.fit(X, y, verbose=False, batch_size=1)
+        self.do_synchronized(lambda: self.model.fit(X, y, verbose=False, batch_size=1))
 
         self.training_initialized = True
 
         while not self.terminate:
-            self.model_lock.acquire(True)
-            self.train()
-            self.model_lock.release()
+            self.do_synchronized(lambda: self.train())
             time.sleep(0.01)
+
+    def do_synchronized(self, function_to_execute):
+        self.model_lock.acquire(True)
+        result = function_to_execute()
+        self.model_lock.release()
+        return result

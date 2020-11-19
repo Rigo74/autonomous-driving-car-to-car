@@ -71,7 +71,13 @@ class RGBCamera(Sensor):
             ("image_size_y", f"{im_height}"),
             ("fov", f"{fov}")
         ]
-        return RGBCamera(blueprint_library, location, attributes)
+        return RGBCamera(
+            blueprint_library=blueprint_library,
+            location=location,
+            attributes=attributes,
+            im_width=im_width,
+            im_height=im_height
+        )
 
     @staticmethod
     def create_default(blueprint_library, location):

@@ -26,26 +26,22 @@ if gpus:
         print(e)
 
 
-def generate_model_name(max_reward, average_reward, min_reward, episode):
-    return f"{MODEL_NAME}__{int(time.time())}__{episode}ep__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min.model"
+def generate_model_name_appendix(max_reward, average_reward, min_reward, episode):
+    return f"{episode}ep_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None #"models/Cnn4Layers__1605280124__100ep___138.70max___38.38avg__-77.45min.model"
+trained_model_name = None
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
     epsilon = INITIAL_EPSILON
     # For stats
-    ep_rewards = [-33.80]
+    ep_rewards = [-53.80]
 
     # For more repetitive results
     random.seed(1)
     np.random.seed(1)
     tf.random.set_seed(1)
-
-    # Create models folder
-    if not os.path.isdir('models'):
-        os.makedirs('models')
 
     # Create agent and carla_utils
     env = CarlaEnvironment(camera_config=(
@@ -76,7 +72,6 @@ if __name__ == '__main__':
 
             # Restarting episode - reset episode reward and step number
             episode_reward = 0
-            step = 1
 
             # Reset carla_utils and get initial state
             env.reset()
@@ -89,6 +84,8 @@ if __name__ == '__main__':
             done = False
             episode_end = time.time() + SECONDS_PER_EPISODE
 
+            step = 1
+            start = time.time()
             # Play for given number of seconds only
             while not done:
 
@@ -116,14 +113,22 @@ if __name__ == '__main__':
                 current_state = new_state
                 step += 1
 
+            end = time.time()
+            time_elapsed = end - start
+            print()
+            print(f"[STEPS_IN_EPISODE] {step}")
+            print(f"[ELAPSED_TIME] {time_elapsed}")
+            print(f"[STEP_AVG_TIME] {time_elapsed/step}")
             # End of episode - destroy agents
             env.destroy()
+
+            agent.log_metrics(episode_reward, epsilon)
 
             # Append episode reward to a list and log stats (every given number of episodes)
             ep_rewards.append(episode_reward)
             if not episode % AGGREGATE_STATS_EVERY_X_EPISODES or episode == 1:
-                average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:]) / len(
-                    ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
+                average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:]) \
+                                 / len(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
                 min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
                 max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
 
@@ -132,7 +137,7 @@ if __name__ == '__main__':
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:
-                    agent.save_model(generate_model_name(max_reward, average_reward, min_reward, episode))
+                    agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode))
 
             # Decay epsilon
             if epsilon > FINAL_EPSILON:
@@ -142,7 +147,7 @@ if __name__ == '__main__':
         # Set termination flag for training thread and wait for it to finish
         agent.terminate = True
         trainer_thread.join()
-        agent.save_model(generate_model_name(max_reward, average_reward, min_reward, agent.tensorboard.step))
+        agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step))
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)
