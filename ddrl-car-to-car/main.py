@@ -1,6 +1,6 @@
 import os
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
 import numpy as np
@@ -30,18 +30,18 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None
+trained_model_name = None  # "Cnn4Layers_1606463958_500ep____8.40max___-4.57avg__-30.80min"
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
     epsilon = INITIAL_EPSILON
     # For stats
-    ep_rewards = [-53.80]
+    ep_rewards = [MIN_REWARD]
 
     # For more repetitive results
-    random.seed(1)
-    np.random.seed(1)
-    tf.random.set_seed(1)
+    # random.seed(1)
+    # np.random.seed(1)
+    # tf.random.set_seed(1)
 
     # Create agent and carla_utils
     env = CarlaEnvironment(camera_config=(
@@ -115,10 +115,11 @@ if __name__ == '__main__':
 
             end = time.time()
             time_elapsed = end - start
-            print()
-            print(f"[STEPS_IN_EPISODE] {step}")
-            print(f"[ELAPSED_TIME] {time_elapsed}")
-            print(f"[STEP_AVG_TIME] {time_elapsed/step}")
+            # print()
+            # print(f"[STEPS_IN_EPISODE] {step}")
+            # print(f"[ELAPSED_TIME] {time_elapsed}")
+            # print(f"[STEP_AVG_TIME] {time_elapsed/step}")
+
             # End of episode - destroy agents
             env.destroy()
 

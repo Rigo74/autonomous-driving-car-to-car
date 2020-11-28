@@ -7,6 +7,7 @@ import numpy as np
 from collections import deque
 from keras.callbacks import TensorBoard
 import tensorflow as tf
+from sys import getsizeof
 
 from dqn_parameters import *
 from config import *
@@ -60,6 +61,7 @@ class DQNAgent:
 
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)
+        # print(f"[REPLAY_MEMORY] len: {len(self.replay_memory)} size: {getsizeof(self.replay_memory)}")
         self.replay_memory.append(transition)
 
     def train(self):
