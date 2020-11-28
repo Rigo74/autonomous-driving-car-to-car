@@ -1,7 +1,7 @@
 import os
 
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import random
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# import random
 import time
 import numpy as np
 import tensorflow as tf
@@ -26,8 +26,8 @@ if gpus:
         print(e)
 
 
-def generate_model_name_appendix(max_reward, average_reward, min_reward, episode):
-    return f"{episode}ep_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
+def generate_model_name_appendix(max_reward, average_reward, min_reward, episode, epsilon):
+    return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
 trained_model_name = None  # "Cnn4Layers_1606463958_500ep____8.40max___-4.57avg__-30.80min"
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 
                 # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:
-                    agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode))
+                    agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode,epsilon))
 
             # Decay epsilon
             if epsilon > FINAL_EPSILON:
@@ -148,7 +148,7 @@ if __name__ == '__main__':
         # Set termination flag for training thread and wait for it to finish
         agent.terminate = True
         trainer_thread.join()
-        agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step))
+        agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step,epsilon))
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)
