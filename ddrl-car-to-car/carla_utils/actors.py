@@ -50,7 +50,7 @@ class Sensor:
 
 
 class RGBCamera(Sensor):
-    SHOW_CAM = False
+    # SHOW_CAM = False
     MODEL = "sensor.camera.rgb"
 
     def __init__(self, blueprint_library, location, attributes=[],
@@ -92,9 +92,11 @@ class RGBCamera(Sensor):
         i = np.array(image.raw_data)
         i2 = i.reshape((self.im_height, self.im_width, 4))
         i3 = i2[:, :, :3]
+        '''
         if self.SHOW_CAM:
             cv2.imshow("", i3)
             cv2.waitKey(1)
+        '''
         self.data = i3
 
 

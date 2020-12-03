@@ -62,6 +62,7 @@ class DQNAgent:
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)
         # print(f"[REPLAY_MEMORY] len: {len(self.replay_memory)} size: {getsizeof(self.replay_memory)}")
+        # print(f"[REPLAY_MEMORY] len: {len(self.replay_memory)}")
         self.replay_memory.append(transition)
 
     def train(self):
