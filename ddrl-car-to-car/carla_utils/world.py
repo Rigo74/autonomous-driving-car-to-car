@@ -1,4 +1,5 @@
 import carla
+import random
 from carla_utils import config
 from carla_utils.actors import Vehicle
 
@@ -9,7 +10,13 @@ class World:
         self.client = carla.Client(host, port)
         self.client.set_timeout(config.CLIENT_TIMEOUT)
         self.world = self.client.reload_world()  # self.client.get_world()
+        self.world.set_weather(carla.WeatherParameters.ClearNoon)
         self.blueprint_library = self.world.get_blueprint_library()
+
+    def load_map(self, map_name="Town01", random_choice=True):
+        map_chosen = random.choice(self.client.get_available_maps()) if random_choice else map_name
+        self.world = self.client.load_world(map_chosen)
+        self.world.set_weather(carla.WeatherParameters.ClearNoon)
 
     def create_vehicle(self, position, model=config.DEFAULT_VEHICLE_MODEL):
         vehicle_blueprint = self.blueprint_library.filter(model)[0]

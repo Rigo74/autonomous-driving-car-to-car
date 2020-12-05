@@ -49,7 +49,9 @@ class CarlaEnvironment:
         self.in_lane = True
 
     def reset(self):
-        self.actor_list.clear()
+        self.destroy()
+
+        self.carla_world.load_map()
 
         vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
@@ -116,7 +118,7 @@ class CarlaEnvironment:
                 min_speed_limit=min_speed_limit,
                 is_at_traffic_light_red=is_at_traffic_light_red
             )
-            #print(f"[SPEED_REWARD] {speed_reward}")
+            # print(f"[SPEED_REWARD] {speed_reward}")
             reward += speed_reward
 
             action_reward = self.evaluate_action_reward(
@@ -124,16 +126,16 @@ class CarlaEnvironment:
                 current_speed=current_speed,
                 is_at_traffic_light_red=is_at_traffic_light_red
             )
-            #print(f"[ACTION_REWARD] {action_reward}")
+            # print(f"[ACTION_REWARD] {action_reward}")
             reward += action_reward
 
             if len(self.lane_invasion_detector.data) > 0:
                 crossing_line_reward = self.evaluate_crossing_line_reward()
-                #print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
+                # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
                 reward += crossing_line_reward
             else:
                 road_side_reward = CORRECT_SIDE_ROAD if self.in_correct_lane_side else WRONG_SIDE_ROAD
-                #print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
+                # print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
                 reward += road_side_reward
 
         self.last_action = action
