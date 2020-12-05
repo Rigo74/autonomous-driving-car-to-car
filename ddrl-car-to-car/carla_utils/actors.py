@@ -50,7 +50,7 @@ class Sensor:
 
 
 class RGBCamera(Sensor):
-    # SHOW_CAM = False
+    # SHOW_CAM = True
     MODEL = "sensor.camera.rgb"
 
     def __init__(self, blueprint_library, location, attributes=[],

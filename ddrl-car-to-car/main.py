@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from threading import Thread
 from tqdm import tqdm
-# from sys import getsizeof
+from sys import getsizeof
 
 from dqn_agent import DQNAgent
 from dqn_parameters import *
@@ -111,7 +111,7 @@ if __name__ == '__main__':
                 # Every step we update replay memory
                 agent.update_replay_memory((current_state, action, reward, new_state, done))
                 # print()
-                # print(f"[CURRENT_STATE] size: {getsizeof(current_state)} | nbytes {current_state.nbytes} | __sizeof__ {current_state.__sizeof__()}")
+                # print(f"[CURRENT_STATE] nbytes: {current_state.nbytes} | dtype: {current_state.dtype} | len1: {len(current_state)} | len2: {len(current_state[0])}")
                 # print(f"[ACTION] value: {action} | size: {getsizeof(action)} | __sizeof__ {action.__sizeof__()}")
                 # print(f"[REWARD] value: {reward} | size: {getsizeof(reward)} | __sizeof__ {reward.__sizeof__()}")
                 # print(f"[NEW_STATE] size: {getsizeof(new_state)} | nbytes {new_state.nbytes} | __sizeof__ {new_state.__sizeof__()}")

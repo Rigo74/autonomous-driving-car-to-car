@@ -71,10 +71,10 @@ class DQNAgent:
 
         mini_batch = random.sample(self.replay_memory, MINI_BATCH_SIZE)
 
-        current_states = np.array([transition[0] for transition in mini_batch]) / 255.0
+        current_states = np.array([transition[0] for transition in mini_batch]).astype(np.float32) / 255.0
         current_qs_list = self.model.predict(current_states, PREDICTION_BATCH_SIZE)
 
-        new_current_states = np.array([transition[3] for transition in mini_batch]) / 255.0
+        new_current_states = np.array([transition[3] for transition in mini_batch]).astype(np.float32) / 255.0
         future_qs_list = self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE)
 
         X = []
@@ -99,8 +99,8 @@ class DQNAgent:
             self.last_logged_episode = self.tensorboard.step
 
         self.model.fit(
-            np.array(X) / 255.0,
-            np.array(y),
+            np.array(X).astype(np.float32) / 255.0,
+            np.array(y).astype(np.float32),
             batch_size=TRAINING_BATCH_SIZE,
             verbose=0,
             shuffle=False,
@@ -114,7 +114,7 @@ class DQNAgent:
             self.target_update_counter = 0
 
     def get_qs(self, state):
-        prediction_input = np.array(state).reshape(-1, *state.shape) / 255.0
+        prediction_input = np.array(state).astype(np.float32).reshape(-1, *state.shape) / 255.0
         return self.do_synchronized(lambda: self.model.predict(prediction_input))[0]
 
     def save_model(self, name_appendix):
