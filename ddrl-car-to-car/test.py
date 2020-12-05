@@ -17,7 +17,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "models/Cnn4Layers_1606691651_7200ep_0.1eps___-0.10max___-2.47avg__-16.75min"
+model_name = "models/Cnn4Layers_1607021169_8100ep_0.1eps____3.20max___-0.76avg__-10.80min"
 
 if __name__ == '__main__':
 
