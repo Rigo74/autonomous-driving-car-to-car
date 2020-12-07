@@ -48,10 +48,11 @@ class CarlaEnvironment:
         self.in_correct_lane_side = True
         self.in_lane = True
 
-    def reset(self):
+    def reset(self,change_map=False):
         self.destroy()
 
-        self.carla_world.load_map()
+        if change_map:
+            self.carla_world.load_map()
 
         vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
