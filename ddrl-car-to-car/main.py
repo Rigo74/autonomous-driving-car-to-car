@@ -1,3 +1,4 @@
+import gc
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -7,7 +8,6 @@ import numpy as np
 import tensorflow as tf
 from threading import Thread
 from tqdm import tqdm
-from sys import getsizeof
 
 from dqn_agent import DQNAgent
 from dqn_parameters import *
@@ -17,13 +17,9 @@ from rewards import *
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
-        # Currently, memory growth needs to be the same across GPUs
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
-        # logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        # print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
-        # Memory growth must be set before GPUs have been initialized
         print(e)
 
 
@@ -66,7 +62,6 @@ if __name__ == '__main__':
 
         # Iterate over episodes
         for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
-            # try:
 
             # Update tensorboard step every episode
             agent.tensorboard.step = episode
@@ -78,8 +73,6 @@ if __name__ == '__main__':
             env.reset()
             # env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
-            # print("[DDQN] current state (rgb image)")
-            # print(current_state)
 
             # Reset flag and start iterating until episode ends
             done = False
@@ -110,22 +103,12 @@ if __name__ == '__main__':
 
                 # Every step we update replay memory
                 agent.update_replay_memory((current_state, action, reward, new_state, done))
-                # print()
-                # print(f"[CURRENT_STATE] nbytes: {current_state.nbytes} | dtype: {current_state.dtype} | len1: {len(current_state)} | len2: {len(current_state[0])}")
-                # print(f"[ACTION] value: {action} | size: {getsizeof(action)} | __sizeof__ {action.__sizeof__()}")
-                # print(f"[REWARD] value: {reward} | size: {getsizeof(reward)} | __sizeof__ {reward.__sizeof__()}")
-                # print(f"[NEW_STATE] size: {getsizeof(new_state)} | nbytes {new_state.nbytes} | __sizeof__ {new_state.__sizeof__()}")
-                # print(f"[DONE] value: {reward} | size: {getsizeof(done)} | __sizeof__ {reward.__sizeof__()}")
 
                 current_state = new_state
                 step += 1
 
             end = time.time()
             time_elapsed = end - start
-            # print()
-            # print(f"[STEPS_IN_EPISODE] {step}")
-            # print(f"[ELAPSED_TIME] {time_elapsed}")
-            # print(f"[STEP_AVG_TIME] {time_elapsed/step}")
 
             # End of episode - destroy agents
             env.destroy()
@@ -151,6 +134,9 @@ if __name__ == '__main__':
             if epsilon > FINAL_EPSILON:
                 epsilon *= EPSILON_DECAY
                 epsilon = max(FINAL_EPSILON, epsilon)
+
+            # Python dimmerda e tensoflow segue nonj avrete più la mia ram
+            gc.collect()
 
         # Set termination flag for training thread and wait for it to finish
         agent.terminate = True

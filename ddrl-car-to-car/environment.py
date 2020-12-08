@@ -5,6 +5,7 @@ import random
 import numpy as np
 from carla import TrafficLightState
 
+from carla_utils.npc_manager import NPCManager
 from carla_utils.world import World
 from carla_utils.actors import CollisionDetector, LaneInvasionDetector
 from carla_utils.config import *
@@ -25,7 +26,9 @@ def create_actions_list():
 class CarlaEnvironment:
     STEER_AMT = 1.0
 
-    def __init__(self, camera_config=(RGB_CAMERA_IM_WIDTH, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_FOV)):
+    def __init__(self,
+                 camera_config=(RGB_CAMERA_IM_WIDTH, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_FOV),
+                 npc_config=(NUMBER_OF_VEHICLES,NUMBER_OF_PEDESTRIANS)):
         self.carla_world = World()
         self.episode_start = time.time()
         self.actor_list = []
@@ -41,18 +44,29 @@ class CarlaEnvironment:
         self.lane_invasion_detector = LaneInvasionDetector(self.carla_world.blueprint_library)
         self.actions = create_actions_list()
         self.last_action = (0, 0, 0)
-        self.car_is_stopped_since = 0
+        self.car_is_stopped_since = -1
         self.last_road_id = 0
         self.last_lane_id = 0
         self.previous_lane_waypoint = None
         self.in_correct_lane_side = True
         self.in_lane = True
+        self.npc_manager = None
+        self.npc_vehicles = npc_config[0]
+        self.npc_pedestrians = npc_config[1]
+        self.run_npc_manager = self.npc_vehicles > 0 or self.npc_pedestrians > 0
 
-    def reset(self,change_map=False):
+    def reset(self, change_map=False):
         self.destroy()
 
         if change_map:
             self.carla_world.load_map()
+
+        if self.run_npc_manager:
+            self.npc_manager = NPCManager(self.carla_world.client,
+                                          self.carla_world.world,
+                                          number_of_vehicles_to_spawn=self.npc_vehicles,
+                                          number_of_pedestrians_to_spawn=self.npc_pedestrians
+                                          )
 
         vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
@@ -78,6 +92,7 @@ class CarlaEnvironment:
         self.last_lane_id = self.previous_lane_waypoint.lane_id
         self.in_correct_lane_side = True
         self.in_lane = True
+        self.car_is_stopped_since = -1
 
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
@@ -256,6 +271,9 @@ class CarlaEnvironment:
         for a in self.actor_list:
             a.destroy()
         self.actor_list.clear()
+        if self.npc_manager is not None:
+            self.npc_manager.destroy()
+        self.npc_manager = None
 
     def move_view_to_vehicle_position(self):
         spectator = self.carla_world.world.get_spectator()

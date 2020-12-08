@@ -104,7 +104,7 @@ class DQNAgent:
             batch_size=TRAINING_BATCH_SIZE,
             verbose=0,
             shuffle=False,
-            callbacks=[self.tensorboard] if log_this_step else None
+            callbacks=[self.tensorboard]  # if log_this_step else None
         )
 
         self.target_update_counter += 1

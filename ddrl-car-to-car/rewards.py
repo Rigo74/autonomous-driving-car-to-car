@@ -1,4 +1,4 @@
-TARGET_REACHED = 1 # nel nostro caso non avverrà mai
+TARGET_REACHED = 1  # nel nostro caso non avverrà mai
 STOP_AT_INTERSECTION_RED = 0.6
 CORRECT_SIDE_ROAD = 0 # 0.5
 FORWARD = 0.05  # 0.4
