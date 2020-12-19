@@ -125,6 +125,7 @@ class CarlaEnvironment:
         if len(self.collision_detector.data) != 0:
             done = True
             reward = CRASH
+            # print(f"[CRASH] {CRASH}")
         else:
             is_at_traffic_light_red = self.vehicle.vehicle_actor.get_traffic_light_state() == TrafficLightState.Red
 
@@ -154,6 +155,7 @@ class CarlaEnvironment:
                 # print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
                 reward += road_side_reward
 
+        # print("---------------------------------------------------------------")
         self.last_action = action
         return self.get_current_state(), reward, done
 

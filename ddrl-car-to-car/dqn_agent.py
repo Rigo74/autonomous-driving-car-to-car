@@ -72,10 +72,10 @@ class DQNAgent:
         mini_batch = random.sample(self.replay_memory, MINI_BATCH_SIZE)
 
         current_states = np.array([transition[0] for transition in mini_batch]).astype(np.float32) / 255.0
-        current_qs_list = self.model.predict(current_states, PREDICTION_BATCH_SIZE)
+        current_qs_list = self.do_synchronized(lambda: self.model.predict(current_states, PREDICTION_BATCH_SIZE))
 
         new_current_states = np.array([transition[3] for transition in mini_batch]).astype(np.float32) / 255.0
-        future_qs_list = self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE)
+        future_qs_list = self.do_synchronized(lambda: self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE))
 
         X = []
         y = []
@@ -98,14 +98,17 @@ class DQNAgent:
             log_this_step = True
             self.last_logged_episode = self.tensorboard.step
 
-        self.model.fit(
-            np.array(X).astype(np.float32) / 255.0,
-            np.array(y).astype(np.float32),
+        X = np.array(X).astype(np.float32) / 255.0
+        y = np.array(y).astype(np.float32)
+
+        self.do_synchronized(lambda: self.model.fit(
+            X,
+            y,
             batch_size=TRAINING_BATCH_SIZE,
             verbose=0,
             shuffle=False,
-            callbacks=[self.tensorboard]  # if log_this_step else None
-        )
+            callbacks=[self.tensorboard] if log_this_step else None
+        ))
 
         self.target_update_counter += 1
 
@@ -133,7 +136,7 @@ class DQNAgent:
         self.training_initialized = True
 
         while not self.terminate:
-            self.do_synchronized(lambda: self.train())
+            self.train()
             time.sleep(0.01)
 
     def do_synchronized(self, function_to_execute):

@@ -27,7 +27,7 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None  # "Cnn4Layers_1606463958_500ep____8.40max___-4.57avg__-30.80min"
+trained_model_name = None  # "Cnn4Layers_1607586908_18200ep_0.1eps____3.00max___-0.61avg___-3.00min"
 
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
@@ -71,32 +71,36 @@ if __name__ == '__main__':
 
             # Reset carla_utils and get initial state
             env.reset()
-            # env.move_view_to_vehicle_position()
+            env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
 
             # Reset flag and start iterating until episode ends
             done = False
             episode_end = time.time() + SECONDS_PER_EPISODE
 
-            step = 1
+            step = 0
             start = time.time()
             # Play for given number of seconds only
+            # print(env.get_number_of_actions())
             while not done:
 
                 # This part stays mostly the same, the change is to query a model for Q values
                 if np.random.random() > epsilon:
                     # Get action from Q table
+                    # action_start = time.time()
                     action = np.argmax(agent.get_qs(current_state))
+                    # time_elapsed_for_choice = time.time() - action_start
+                    # print(f"[DQN] time_elapsed_for_choice = {time_elapsed_for_choice}")
                 else:
                     # Get random action
                     action = np.random.randint(0, env.get_number_of_actions())
                     # This takes no time, so we add a delay matching 60 FPS (prediction above takes longer)
                     time.sleep(1 / FPS)
 
+                # env_start = time.time()
                 new_state, reward, done = env.step(action)
-
-                if episode_end < time.time():
-                    done = True
+                # env_elapsed = time.time() - env_start
+                # print(f"[DQN] env_elapsed = {env_elapsed}")
 
                 # Transform new continous state to new discrete state and count reward
                 episode_reward += reward
@@ -106,12 +110,19 @@ if __name__ == '__main__':
 
                 current_state = new_state
                 step += 1
+                if step >= STEPS_PER_EPISODE:  # episode_end < time.time():
+                    done = True
 
             end = time.time()
             time_elapsed = end - start
 
+            # print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
+
             # End of episode - destroy agents
             env.destroy()
+
+            # penalizzare gli episodi finiti prima a causa di azioni sbagliate per visualizzazione grafico reward
+            episode_reward += (-1 * (STEPS_PER_EPISODE - step))
 
             agent.log_metrics(episode_reward, epsilon)
 
