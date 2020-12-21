@@ -1,13 +1,14 @@
 import gc
 import os
+from collections import deque
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # import random
 import time
 import numpy as np
 import tensorflow as tf
-from threading import Thread
 from tqdm import tqdm
+from guppy import hpy
 
 from dqn_agent import DQNAgent
 from dqn_parameters import *
@@ -32,13 +33,13 @@ trained_model_name = None  # "Cnn4Layers_1607586908_18200ep_0.1eps____3.00max___
 if __name__ == '__main__':
     max_reward = average_reward = min_reward = 0
     epsilon = INITIAL_EPSILON
-    # For stats
-    ep_rewards = [MIN_REWARD]
 
-    # For more repetitive results
-    # random.seed(1)
-    # np.random.seed(1)
-    # tf.random.set_seed(1)
+    h = hpy()
+
+    last_x_episodes_rewards = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
+    last_x_episodes_rewards.append(MIN_REWARD)
+
+    last_x_episodes_losses = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
 
     # Create agent and carla_utils
     env = CarlaEnvironment(camera_config=(
@@ -48,64 +49,39 @@ if __name__ == '__main__':
     ))
     agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
     agent.load_model(trained_model_name)
+    agent.initialize_training_variables()
 
     try:
-        # Start training thread and wait for training to be initialized
-        trainer_thread = Thread(target=agent.train_in_loop, daemon=True)
-        trainer_thread.start()
-        while not agent.training_initialized:
-            time.sleep(0.01)
-
-        # Initialize predictions - forst prediction takes longer as of initialization that has to be done
+        # Initialize predictions - first prediction takes longer as of initialization that has to be done
         # It's better to do a first prediction then before we start iterating over episode steps
         agent.get_qs(np.ones((env.front_camera.im_height, env.front_camera.im_width, env.front_camera.channels)))
 
-        # Iterate over episodes
         for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
-
-            # Update tensorboard step every episode
             agent.tensorboard.step = episode
-
-            # Restarting episode - reset episode reward and step number
             episode_reward = 0
 
-            # Reset carla_utils and get initial state
             env.reset()
             env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
 
-            # Reset flag and start iterating until episode ends
             done = False
-            episode_end = time.time() + SECONDS_PER_EPISODE
 
             step = 0
             start = time.time()
-            # Play for given number of seconds only
-            # print(env.get_number_of_actions())
+
+            episode_losses = []
+
             while not done:
 
-                # This part stays mostly the same, the change is to query a model for Q values
+                step_start_time = time.time()
+
                 if np.random.random() > epsilon:
-                    # Get action from Q table
-                    # action_start = time.time()
                     action = np.argmax(agent.get_qs(current_state))
-                    # time_elapsed_for_choice = time.time() - action_start
-                    # print(f"[DQN] time_elapsed_for_choice = {time_elapsed_for_choice}")
                 else:
-                    # Get random action
                     action = np.random.randint(0, env.get_number_of_actions())
-                    # This takes no time, so we add a delay matching 60 FPS (prediction above takes longer)
-                    time.sleep(1 / FPS)
 
-                # env_start = time.time()
                 new_state, reward, done = env.step(action)
-                # env_elapsed = time.time() - env_start
-                # print(f"[DQN] env_elapsed = {env_elapsed}")
-
-                # Transform new continous state to new discrete state and count reward
                 episode_reward += reward
-
-                # Every step we update replay memory
                 agent.update_replay_memory((current_state, action, reward, new_state, done))
 
                 current_state = new_state
@@ -113,46 +89,48 @@ if __name__ == '__main__':
                 if step >= STEPS_PER_EPISODE:  # episode_end < time.time():
                     done = True
 
+                loss = agent.train()
+                if loss is not None:
+                    episode_losses.extend(loss)
+
+                time.sleep(STEP_TIME_SECONDS - (time.time() - step_start_time))
+
             end = time.time()
             time_elapsed = end - start
 
             # print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
 
-            # End of episode - destroy agents
             env.destroy()
 
-            # penalizzare gli episodi finiti prima a causa di azioni sbagliate per visualizzazione grafico reward
-            episode_reward += (-1 * (STEPS_PER_EPISODE - step))
+            last_x_episodes_rewards.append(episode_reward)
+            episode_average_loss = np.mean(episode_losses)
+            last_x_episodes_losses.append(episode_average_loss)
+            average_reward = np.mean(last_x_episodes_rewards)
+            average_loss = np.mean(last_x_episodes_losses)
 
-            agent.log_metrics(episode_reward, epsilon)
+            agent.log_metrics(episode_reward, epsilon, episode_average_loss, average_reward, average_loss)
 
-            # Append episode reward to a list and log stats (every given number of episodes)
-            ep_rewards.append(episode_reward)
             if not episode % AGGREGATE_STATS_EVERY_X_EPISODES or episode == 1:
-                average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:]) \
-                                 / len(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
-                min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
-                max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY_X_EPISODES:])
+                min_reward = min(last_x_episodes_rewards)
+                max_reward = max(last_x_episodes_rewards)
 
                 print(
                     f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
 
-                # Save model, but only when min reward is greater or equal a set value
                 if min_reward >= MIN_REWARD:
-                    agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode,epsilon))
+                    agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode, epsilon))
 
-            # Decay epsilon
             if epsilon > FINAL_EPSILON:
                 epsilon *= EPSILON_DECAY
                 epsilon = max(FINAL_EPSILON, epsilon)
 
-            # Python dimmerda e tensoflow segue nonj avrete più la mia ram
             gc.collect()
 
-        # Set termination flag for training thread and wait for it to finish
+            if not (episode % PRINT_X_HEAP_VARIABLES_EVERY_Y_EPISODES):
+                print(h.heap()[:PRINT_X_HEAP_VARIABLES].all)
+
         agent.terminate = True
-        trainer_thread.join()
-        agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step,epsilon))
+        agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

@@ -5,7 +5,6 @@ import random
 import numpy as np
 from carla import TrafficLightState
 
-from carla_utils.npc_manager import NPCManager
 from carla_utils.world import World
 from carla_utils.actors import CollisionDetector, LaneInvasionDetector
 from carla_utils.config import *
@@ -27,8 +26,8 @@ class CarlaEnvironment:
     STEER_AMT = 1.0
 
     def __init__(self,
-                 camera_config=(RGB_CAMERA_IM_WIDTH, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_FOV),
-                 npc_config=(NUMBER_OF_VEHICLES,NUMBER_OF_PEDESTRIANS)):
+                 camera_config=(RGB_CAMERA_IM_WIDTH, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_FOV)
+         ):
         self.carla_world = World()
         self.episode_start = time.time()
         self.actor_list = []
@@ -50,23 +49,12 @@ class CarlaEnvironment:
         self.previous_lane_waypoint = None
         self.in_correct_lane_side = True
         self.in_lane = True
-        self.npc_manager = None
-        self.npc_vehicles = npc_config[0]
-        self.npc_pedestrians = npc_config[1]
-        self.run_npc_manager = self.npc_vehicles > 0 or self.npc_pedestrians > 0
 
     def reset(self, change_map=False):
         self.destroy()
 
         if change_map:
             self.carla_world.load_map()
-
-        if self.run_npc_manager:
-            self.npc_manager = NPCManager(self.carla_world.client,
-                                          self.carla_world.world,
-                                          number_of_vehicles_to_spawn=self.npc_vehicles,
-                                          number_of_pedestrians_to_spawn=self.npc_pedestrians
-                                          )
 
         vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
@@ -147,11 +135,11 @@ class CarlaEnvironment:
             reward += action_reward
 
             if len(self.lane_invasion_detector.data) > 0:
-                crossing_line_reward = self.evaluate_crossing_line_reward()
+                done, crossing_line_reward = self.evaluate_crossing_line_reward()
                 # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
                 reward += crossing_line_reward
             else:
-                road_side_reward = CORRECT_SIDE_ROAD if self.in_correct_lane_side else WRONG_SIDE_ROAD
+                done, road_side_reward = (False, CORRECT_SIDE_ROAD) if self.in_correct_lane_side else (True, WRONG_SIDE_ROAD)
                 # print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
                 reward += road_side_reward
 
@@ -211,13 +199,15 @@ class CarlaEnvironment:
         vehicle_transform = self.vehicle.vehicle_actor.get_transform()
         if lane_changes_not_allowed:
             if waypoint.lane_type == carla.LaneType.Driving:
-                return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else WRONG_LANE
+                partial_reward = WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else WRONG_LANE
+                return True, partial_reward
             elif waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk:
-                return OFF_ROAD
+                return True, OFF_ROAD
             else:
-                return WRONG_LANE
+                return True, WRONG_LANE
         else:
-            return WRONG_SIDE_ROAD if self.is_wrong_side_road(waypoint, vehicle_transform) else CORRECT_SIDE_ROAD
+            return (True, WRONG_SIDE_ROAD) if self.is_wrong_side_road(waypoint, vehicle_transform) \
+                else (False, CORRECT_SIDE_ROAD)
 
     def is_wrong_side_road(self, lane_waypoint, vehicle_transform):
         current_road_id = lane_waypoint.road_id
@@ -273,9 +263,6 @@ class CarlaEnvironment:
         for a in self.actor_list:
             a.destroy()
         self.actor_list.clear()
-        if self.npc_manager is not None:
-            self.npc_manager.destroy()
-        self.npc_manager = None
 
     def move_view_to_vehicle_position(self):
         spectator = self.carla_world.world.get_spectator()
