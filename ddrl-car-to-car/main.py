@@ -31,8 +31,10 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
 trained_model_name = None  # "Cnn4Layers_1607586908_18200ep_0.1eps____3.00max___-0.61avg___-3.00min"
 
 if __name__ == '__main__':
-    max_reward = average_reward = min_reward = 0
+    max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
+
+    # step_times = []
 
     h = hpy()
 
@@ -93,7 +95,11 @@ if __name__ == '__main__':
                 if loss is not None:
                     episode_losses.extend(loss)
 
-                time.sleep(STEP_TIME_SECONDS - (time.time() - step_start_time))
+                step_elapsed_time = time.time() - step_start_time
+                # step_times.append(step_elapsed_time)
+
+                if STEP_TIME_SECONDS > step_elapsed_time:
+                    time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
             end = time.time()
             time_elapsed = end - start
@@ -102,13 +108,27 @@ if __name__ == '__main__':
 
             env.destroy()
 
-            last_x_episodes_rewards.append(episode_reward)
-            episode_average_loss = np.mean(episode_losses)
-            last_x_episodes_losses.append(episode_average_loss)
-            average_reward = np.mean(last_x_episodes_rewards)
-            average_loss = np.mean(last_x_episodes_losses)
+            metrics_to_be_logged = {
+                EPISODE_AVERAGE_REWARD: episode_reward,
+                EPSILON: epsilon
+            }
 
-            agent.log_metrics(episode_reward, epsilon, episode_average_loss, average_reward, average_loss)
+            last_x_episodes_rewards.append(episode_reward)
+
+            episode_average_loss = np.mean(episode_losses) if len(episode_losses) > 0 else None
+            if episode_average_loss is not None:
+                last_x_episodes_losses.append(episode_average_loss)
+                metrics_to_be_logged[EPISODE_AVERAGE_LOSS] = episode_average_loss
+
+            if len(last_x_episodes_rewards) >= last_x_episodes_rewards.maxlen:
+                average_reward = np.mean(last_x_episodes_rewards)
+                metrics_to_be_logged[AVERAGE_REWARD] = average_reward
+
+            if len(last_x_episodes_losses) >= last_x_episodes_losses.maxlen:
+                average_loss = np.mean(last_x_episodes_losses)
+                metrics_to_be_logged[AVERAGE_LOSS] = average_loss
+
+            agent.log_metrics(metrics_to_be_logged)
 
             if not episode % AGGREGATE_STATS_EVERY_X_EPISODES or episode == 1:
                 min_reward = min(last_x_episodes_rewards)
@@ -129,8 +149,9 @@ if __name__ == '__main__':
             if not (episode % PRINT_X_HEAP_VARIABLES_EVERY_Y_EPISODES):
                 print(h.heap()[:PRINT_X_HEAP_VARIABLES].all)
 
-        agent.terminate = True
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
+
+        # print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

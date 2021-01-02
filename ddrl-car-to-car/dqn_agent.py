@@ -16,13 +16,6 @@ import models
 MODELS_FOLDER = "models"
 LOGS_FOLDER = "logs"
 
-# Custom Metrics
-EPISODE_AVERAGE_REWARD = "Episode average reward"
-EPSILON = "Epsilon"
-AVERAGE_REWARD = f"Average reward of last {AGGREGATE_STATS_EVERY_X_EPISODES} episodes"
-AVERAGE_LOSS = f"Average loss of last {AGGREGATE_STATS_EVERY_X_EPISODES} episodes"
-EPISODE_AVERAGE_LOSS = "Episode average loss"
-
 
 class DQNAgent:
     def __init__(self, model_name, number_of_actions):
@@ -48,12 +41,9 @@ class DQNAgent:
         if not os.path.isdir(MODELS_FOLDER):
             os.makedirs(MODELS_FOLDER)
 
-    def log_metrics(self, episode_reward, epsilon, episode_average_loss, average_reward, average_loss):
-        tf.summary.scalar(EPISODE_AVERAGE_REWARD, data=episode_reward, step=self.tensorboard.step)
-        tf.summary.scalar(EPSILON, data=epsilon, step=self.tensorboard.step)
-        tf.summary.scalar(EPISODE_AVERAGE_LOSS, data=episode_average_loss, step=self.tensorboard.step)
-        tf.summary.scalar(AVERAGE_REWARD, data=average_reward, step=self.tensorboard.step)
-        tf.summary.scalar(AVERAGE_LOSS, data=average_loss, step=self.tensorboard.step)
+    def log_metrics(self, metrics):
+        for key, value in metrics.items():
+            tf.summary.scalar(key, data=value, step=self.tensorboard.step)
 
     def load_model(self, model_name):
         model_path = f"{MODELS_FOLDER}/{model_name}"
@@ -110,7 +100,9 @@ class DQNAgent:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
 
-        return history.history.loss
+        print(history.history)
+
+        return history.history['loss']
 
     def get_qs(self, state):
         prediction_input = np.array(state).astype(np.float32).reshape(-1, *state.shape) / 255.0
