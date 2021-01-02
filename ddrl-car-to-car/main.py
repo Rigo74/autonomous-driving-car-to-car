@@ -3,7 +3,6 @@ import os
 from collections import deque
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-# import random
 import time
 import numpy as np
 import tensorflow as tf
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
 
-    # step_times = []
+    step_times = []
 
     h = hpy()
 
@@ -96,15 +95,15 @@ if __name__ == '__main__':
                     episode_losses.extend(loss)
 
                 step_elapsed_time = time.time() - step_start_time
-                # step_times.append(step_elapsed_time)
+                step_times.append(step_elapsed_time)
 
-                if STEP_TIME_SECONDS > step_elapsed_time:
-                    time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
+                #if STEP_TIME_SECONDS > step_elapsed_time:
+                 #   time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
             end = time.time()
             time_elapsed = end - start
 
-            # print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
+            print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
 
             env.destroy()
 
@@ -146,12 +145,9 @@ if __name__ == '__main__':
 
             gc.collect()
 
-            if not (episode % PRINT_X_HEAP_VARIABLES_EVERY_Y_EPISODES):
-                print(h.heap()[:PRINT_X_HEAP_VARIABLES].all)
-
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
 
-        # print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
+        print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

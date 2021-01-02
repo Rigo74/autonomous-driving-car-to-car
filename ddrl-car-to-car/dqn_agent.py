@@ -1,13 +1,11 @@
 import random
 import time
-import threading
 import keras
 import os
 import numpy as np
 from collections import deque
 from keras.callbacks import TensorBoard
 import tensorflow as tf
-# from sys import getsizeof
 
 from dqn_parameters import *
 from config import *
@@ -19,7 +17,6 @@ LOGS_FOLDER = "logs"
 
 class DQNAgent:
     def __init__(self, model_name, number_of_actions):
-        self.model_lock = threading.Lock()
         self.number_of_actions = number_of_actions
         self.model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
         self.target_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
@@ -99,8 +96,6 @@ class DQNAgent:
         if self.target_update_counter > UPDATE_TARGET_EVERY_X_STEPS:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
-
-        print(history.history)
 
         return history.history['loss']
 

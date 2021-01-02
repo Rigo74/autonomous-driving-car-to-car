@@ -94,7 +94,7 @@ class CarlaEnvironment:
         return self.front_camera.data
 
     def get_number_of_actions(self):
-        return len(self.actions) + 1
+        return len(self.actions)
 
     def do_action(self, choice):
         action = self.last_action
@@ -139,7 +139,7 @@ class CarlaEnvironment:
                 # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
                 reward += crossing_line_reward
             else:
-                done, road_side_reward = (False, CORRECT_SIDE_ROAD) if self.in_correct_lane_side else (True, WRONG_SIDE_ROAD)
+                done, road_side_reward = (False, CORRECT_SIDE_ROAD)  # if self.in_correct_lane_side else (True, WRONG_SIDE_ROAD)
                 # print(f"[ROAD_SIDE_REWARD] {road_side_reward}")
                 reward += road_side_reward
 
@@ -191,6 +191,7 @@ class CarlaEnvironment:
     def evaluate_crossing_line_reward(self):
         lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
                                        for x in self.lane_invasion_detector.data)
+        '''
         waypoint = self.carla_world.get_map().get_waypoint(
             self.vehicle.get_location(),
             project_to_road=True,
@@ -208,6 +209,11 @@ class CarlaEnvironment:
         else:
             return (True, WRONG_SIDE_ROAD) if self.is_wrong_side_road(waypoint, vehicle_transform) \
                 else (False, CORRECT_SIDE_ROAD)
+        '''
+        if lane_changes_not_allowed:
+            return True, -1
+        else:
+            return False, 0
 
     def is_wrong_side_road(self, lane_waypoint, vehicle_transform):
         current_road_id = lane_waypoint.road_id
