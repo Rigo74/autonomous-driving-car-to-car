@@ -4,10 +4,10 @@ from collections import deque
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
+import random
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
-from guppy import hpy
 
 from dqn_agent import DQNAgent
 from dqn_parameters import *
@@ -30,12 +30,16 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
 trained_model_name = None  # "Cnn4Layers_1607586908_18200ep_0.1eps____3.00max___-0.61avg___-3.00min"
 
 if __name__ == '__main__':
+
+    # For more repetitive results
+    random.seed(1)
+    np.random.seed(1)
+    tf.random.set_seed(1)
+
     max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
 
-    step_times = []
-
-    h = hpy()
+    # step_times = []
 
     last_x_episodes_rewards = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
     last_x_episodes_rewards.append(MIN_REWARD)
@@ -94,22 +98,24 @@ if __name__ == '__main__':
                 if loss is not None:
                     episode_losses.extend(loss)
 
+                # if len(agent.replay_memory) >= MIN_REPLAY_MEMORY_SIZE:
                 step_elapsed_time = time.time() - step_start_time
-                step_times.append(step_elapsed_time)
+                # step_times.append(step_elapsed_time)
 
-                #if STEP_TIME_SECONDS > step_elapsed_time:
-                 #   time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
+                if STEP_TIME_SECONDS > step_elapsed_time:
+                    time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
             end = time.time()
             time_elapsed = end - start
 
-            print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
+            # print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
 
             env.destroy()
 
             metrics_to_be_logged = {
                 EPISODE_AVERAGE_REWARD: episode_reward,
-                EPSILON: epsilon
+                EPSILON: epsilon,
+                STEPS_PER_EPISODE_LABEL: step
             }
 
             last_x_episodes_rewards.append(episode_reward)
@@ -133,8 +139,7 @@ if __name__ == '__main__':
                 min_reward = min(last_x_episodes_rewards)
                 max_reward = max(last_x_episodes_rewards)
 
-                print(
-                    f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
+                print(f"<<< episode #{episode} >>> average_reward = {average_reward} | min_reward = {min_reward} | max_reward = {max_reward}")
 
                 if min_reward >= MIN_REWARD:
                     agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, episode, epsilon))
@@ -147,7 +152,7 @@ if __name__ == '__main__':
 
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
 
-        print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
+        # print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

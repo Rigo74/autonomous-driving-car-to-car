@@ -128,7 +128,7 @@ class Cnn64x3(object):
 
         model.add(Flatten())
 
-        model.add(Dense(128, activation="relu"))
+        model.add(Dense(64, activation="relu"))
 
         model.add(Dense(number_of_actions, activation="linear"))
 

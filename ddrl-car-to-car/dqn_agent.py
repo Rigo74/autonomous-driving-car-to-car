@@ -35,8 +35,12 @@ class DQNAgent:
         self.tensorboard = TensorBoard(log_dir=model_logs_folder)
         self.target_update_counter = 0
 
-        if not os.path.isdir(MODELS_FOLDER):
-            os.makedirs(MODELS_FOLDER)
+        self.model_folder = f"{MODELS_FOLDER}/{self.model_name}"
+
+        if not os.path.isdir(self.model_folder):
+            os.makedirs(self.model_folder)
+
+        self.model.summary()
 
     def log_metrics(self, metrics):
         for key, value in metrics.items():
@@ -47,6 +51,7 @@ class DQNAgent:
         if model_name is not None:
             self.model = keras.models.load_model(model_path)
             self.target_model = keras.models.load_model(model_path)
+            self.model.summary()
 
     def update_replay_memory(self, transition):
         # transition = (current_state, action, reward, new_state, done)
@@ -105,7 +110,7 @@ class DQNAgent:
 
     def save_model(self, name_appendix):
         try:
-            self.model.save(f'{MODELS_FOLDER}/{self.model_name}_{name_appendix}')
+            self.model.save(f'{self.model_folder}/{self.model_name}_{name_appendix}')
         except Exception as ex:
             print("[SEVERE] Exception raised while saving: ")
             print(ex)
