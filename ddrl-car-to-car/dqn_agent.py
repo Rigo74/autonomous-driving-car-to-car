@@ -1,12 +1,13 @@
-import random
 import time
-import keras
+import tensorflow.keras as keras
 import os
 import numpy as np
-from collections import deque
-from keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import TensorBoard
 import tensorflow as tf
 
+from tensorflow.keras import losses
+
+from replay_memory import *
 from dqn_parameters import *
 from config import *
 import models
@@ -22,7 +23,7 @@ class DQNAgent:
         self.target_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
         self.target_model.set_weights(self.model.get_weights())
 
-        self.replay_memory = deque(maxlen=REPLAY_MEMORY_SIZE)
+        self.replay_memory = ReplayMemory(max_len=REPLAY_MEMORY_SIZE, min_len=MIN_REPLAY_MEMORY_SIZE)
 
         self.identifier = int(time.time())
         self.model_name = f"{MODEL_NAME}_{self.identifier}"
@@ -53,48 +54,27 @@ class DQNAgent:
             self.target_model = keras.models.load_model(model_path)
             self.model.summary()
 
-    def update_replay_memory(self, transition):
-        # transition = (current_state, action, reward, new_state, done)
-        self.replay_memory.append(transition)
+    def update_replay_memory(self, old_state, action, reward, new_state, done):
+        self.replay_memory.add_transition(Transition(old_state, new_state, action, reward, done))
 
     def train(self):
-        if len(self.replay_memory) < MIN_REPLAY_MEMORY_SIZE:
+
+        if not self.replay_memory.has_enough_values():
             return None
 
-        mini_batch = random.sample(self.replay_memory, MINI_BATCH_SIZE)
+        batch = self.replay_memory.get_random_samples(MINI_BATCH_SIZE)
 
-        current_states = np.array([transition[0] for transition in mini_batch]).astype(np.float32) / 255.0
-        current_qs_list = self.model.predict(current_states, PREDICTION_BATCH_SIZE)
+        old_states = np.asarray([sample.old_state for sample in batch])
+        new_states = np.asarray([sample.new_state for sample in batch])
+        actions = np.asarray([sample.action for sample in batch])
+        rewards = np.asarray([sample.reward for sample in batch])
+        is_done = np.asarray([sample.is_done for sample in batch])
 
-        new_current_states = np.array([transition[3] for transition in mini_batch]).astype(np.float32) / 255.0
-        future_qs_list = self.target_model.predict(new_current_states, PREDICTION_BATCH_SIZE)
+        q_new_state = np.max(self.target_predict(new_states), axis=1)
+        target_q = rewards + (DISCOUNT * q_new_state * (1 - is_done))
+        one_hot_actions = keras.utils.to_categorical(actions, self.number_of_actions)
 
-        X = []
-        y = []
-
-        for index, (current_state, action, reward, new_state, done) in enumerate(mini_batch):
-            if not done:
-                max_future_q = np.max(future_qs_list[index])
-                new_q = reward + DISCOUNT * max_future_q
-            else:
-                new_q = reward
-
-            current_qs = current_qs_list[index]
-            current_qs[action] = new_q
-
-            X.append(current_state)
-            y.append(current_qs)
-
-        X = np.array(X).astype(np.float32) / 255.0
-        y = np.array(y).astype(np.float32)
-
-        history = self.model.fit(
-            X,
-            y,
-            batch_size=TRAINING_BATCH_SIZE,
-            verbose=0,
-            shuffle=False
-        )
+        loss = self.gradient_train(old_states, target_q, one_hot_actions)
 
         self.target_update_counter += 1
 
@@ -102,11 +82,46 @@ class DQNAgent:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
 
-        return history.history['loss']
+        return loss
+
+    @tf.function
+    def target_predict(self, state):
+        #return tf.numpy_function(lambda s: self.target_model(s), [state], tf.float32)
+        return self.target_model(state)
+
+    @tf.function
+    def model_predict(self, state):
+        #return tf.numpy_function(lambda s: self.model(s), [state], tf.float32)
+        return self.model(state)
+
+    '''
+    def my_numpy_func(self, state):
+        # x will be a numpy array with the contents of the input to the
+        # tf.function
+        return self.model.predict(state)
+
+    @tf.function#(input_signature=[tf.TensorSpec(None, tf.float32)])
+    def tf_function(self, state):
+        y = tf.numpy_function(self.my_numpy_func, [state], tf.float32)
+        return y
+    '''
+
+    @tf.function
+    def gradient_train(self, old_states, target_q, one_hot_actions):
+        with tf.GradientTape() as tape:
+            q_values = self.model(old_states)
+            current_q = tf.reduce_sum(tf.multiply(q_values, one_hot_actions), axis=1)
+            loss = losses.Huber()(target_q, current_q)
+
+        variables = self.model.trainable_variables
+        gradients = tape.gradient(loss, variables)
+        zipped = zip(gradients, variables)
+        self.model.optimizer.apply_gradients(zipped)
+
+        return loss
 
     def get_qs(self, state):
-        prediction_input = np.array(state).astype(np.float32).reshape(-1, *state.shape) / 255.0
-        return self.model.predict(prediction_input)[0]
+        return self.model_predict(np.array(state).reshape(-1, *state.shape))
 
     def save_model(self, name_appendix):
         try:

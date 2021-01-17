@@ -39,7 +39,7 @@ if __name__ == '__main__':
     max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
 
-    # step_times = []
+    #step_times = []
 
     last_x_episodes_rewards = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
     last_x_episodes_rewards.append(MIN_REWARD)
@@ -59,14 +59,18 @@ if __name__ == '__main__':
     try:
         # Initialize predictions - first prediction takes longer as of initialization that has to be done
         # It's better to do a first prediction then before we start iterating over episode steps
-        agent.get_qs(np.ones((env.front_camera.im_height, env.front_camera.im_width, env.front_camera.channels)))
+        agent.get_qs(np.ones((
+            env.front_camera.im_height,
+            env.front_camera.im_width,
+            env.front_camera.channels
+        )))
 
         for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
             agent.tensorboard.step = episode
             episode_reward = 0
 
             env.reset()
-            env.move_view_to_vehicle_position()
+            # env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
 
             done = False
@@ -78,7 +82,7 @@ if __name__ == '__main__':
 
             while not done:
 
-                step_start_time = time.time()
+                #step_start_time = time.time()
 
                 if np.random.random() > epsilon:
                     action = np.argmax(agent.get_qs(current_state))
@@ -87,7 +91,13 @@ if __name__ == '__main__':
 
                 new_state, reward, done = env.step(action)
                 episode_reward += reward
-                agent.update_replay_memory((current_state, action, reward, new_state, done))
+                agent.update_replay_memory(
+                    old_state=current_state,
+                    new_state=new_state,
+                    action=action,
+                    reward=reward,
+                    done=done
+                )
 
                 current_state = new_state
                 step += 1
@@ -96,19 +106,19 @@ if __name__ == '__main__':
 
                 loss = agent.train()
                 if loss is not None:
-                    episode_losses.extend(loss)
+                    episode_losses.append(loss)
 
-                # if len(agent.replay_memory) >= MIN_REPLAY_MEMORY_SIZE:
-                step_elapsed_time = time.time() - step_start_time
-                # step_times.append(step_elapsed_time)
+                #if agent.replay_memory.has_enough_values():
+                    #step_elapsed_time = time.time() - step_start_time
+                    #step_times.append(step_elapsed_time)
 
-                if STEP_TIME_SECONDS > step_elapsed_time:
-                    time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
+                # if STEP_TIME_SECONDS > step_elapsed_time:
+                    # time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
             end = time.time()
             time_elapsed = end - start
 
-            # print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
+            #print(f"[EPISODE] {episode} [SECONDS] {time_elapsed} [STEPS] {step} [REWARD] {episode_reward}")
 
             env.destroy()
 
@@ -152,7 +162,10 @@ if __name__ == '__main__':
 
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
 
-        # print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
+        #over = [s for s in step_times if s >= 0.1]
+        #print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
+        #print(f"[STEP_TIME_OVER] avg: {np.mean(over)} min: {min(over)} max: {max(over)} count: {len(over)}")
+        #print(over)
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

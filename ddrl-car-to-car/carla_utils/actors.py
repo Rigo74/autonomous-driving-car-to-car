@@ -54,18 +54,21 @@ class RGBCamera(Sensor):
     MODEL = "sensor.camera.rgb"
 
     def __init__(self, blueprint_library, location, attributes=[],
-                 im_width=DEFAULT_RGB_CAMERA_IM_WIDTH, im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT):
+                 im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+                 im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT):#,
+                 #im_history_len=DEFAULT_RGB_CAMERA_HISTORY_LENGTH):
         super().__init__(blueprint_library, self.MODEL, location, attributes)
         self.im_height = im_height
         self.im_width = im_width
-        self.data = np.array([])
+        self.data = np.array([])#deque(maxlen=im_history_len)
         self.channels = RGBCamera.get_number_of_channels()
 
     @staticmethod
     def create(blueprint_library, location,
                im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
                im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
-               fov=DEFAULT_RGB_CAMERA_FOV):
+               fov=DEFAULT_RGB_CAMERA_FOV):#,
+               #im_history_len=DEFAULT_RGB_CAMERA_HISTORY_LENGTH):
         attributes = [
             ("image_size_x", f"{im_width}"),
             ("image_size_y", f"{im_height}"),
@@ -76,7 +79,8 @@ class RGBCamera(Sensor):
             location=location,
             attributes=attributes,
             im_width=im_width,
-            im_height=im_height
+            im_height=im_height#,
+            #im_history_len=im_history_len
         )
 
     @staticmethod

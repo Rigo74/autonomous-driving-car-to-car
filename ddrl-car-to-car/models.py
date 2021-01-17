@@ -1,8 +1,9 @@
-from keras.applications.xception import Xception
-from keras.layers import Dense, GlobalAveragePooling2D, Conv2D, Activation, AveragePooling2D, Flatten, Input, \
-    Concatenate
-from keras.optimizers import Adam
-from keras.models import Model, Sequential
+from tensorflow.keras.applications.xception import Xception
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Conv2D, Activation, AveragePooling2D, Flatten, Input, \
+    Concatenate, Lambda, Conv3D, AveragePooling3D
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.initializers import VarianceScaling
 
 from config import *
 
@@ -114,24 +115,26 @@ class Cnn64x3(object):
     def create_model(number_of_actions):
         model = Sequential()
 
-        model.add(Conv2D(64, (3, 3), input_shape=IMG_DIMENSION, padding='same'))
+        model.add(Lambda(lambda layer: layer / 255, input_shape=IMG_DIMENSION))
+
+        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
-        model.add(Conv2D(64, (3, 3), padding='same'))
+        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
-        model.add(Conv2D(64, (3, 3), padding='same'))
+        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
         model.add(Flatten())
 
-        model.add(Dense(64, activation="relu"))
+        model.add(Dense(64, activation="relu", kernel_initializer=VarianceScaling(scale=2.0)))
 
-        model.add(Dense(number_of_actions, activation="linear"))
+        model.add(Dense(number_of_actions, activation="linear", kernel_initializer=VarianceScaling(scale=2.0)))
 
-        model.compile(loss="huber_loss", optimizer=Adam(lr=0.001), metrics=["accuracy"])
+        model.compile(optimizer=Adam(lr=0.0004), loss="huber_loss")
 
         return model
