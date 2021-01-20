@@ -19,9 +19,9 @@ LOGS_FOLDER = "logs"
 class DQNAgent:
     def __init__(self, model_name, number_of_actions):
         self.number_of_actions = number_of_actions
-        self.model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
+        self.behaviour_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
         self.target_model = models.create_model_from_name(model_name, number_of_actions=number_of_actions)
-        self.target_model.set_weights(self.model.get_weights())
+        self.target_model.set_weights(self.behaviour_model.get_weights())
 
         self.replay_memory = ReplayMemory(max_len=REPLAY_MEMORY_SIZE, min_len=MIN_REPLAY_MEMORY_SIZE)
 
@@ -41,7 +41,7 @@ class DQNAgent:
         if not os.path.isdir(self.model_folder):
             os.makedirs(self.model_folder)
 
-        self.model.summary()
+        self.behaviour_model.summary()
 
     def log_metrics(self, metrics):
         for key, value in metrics.items():
@@ -50,9 +50,9 @@ class DQNAgent:
     def load_model(self, model_name):
         model_path = f"{MODELS_FOLDER}/{model_name}"
         if model_name is not None:
-            self.model = keras.models.load_model(model_path)
+            self.behaviour_model = keras.models.load_model(model_path)
             self.target_model = keras.models.load_model(model_path)
-            self.model.summary()
+            self.behaviour_model.summary()
 
     def update_replay_memory(self, old_state, action, reward, new_state, done):
         self.replay_memory.add_transition(Transition(old_state, new_state, action, reward, done))
@@ -79,7 +79,7 @@ class DQNAgent:
         self.target_update_counter += 1
 
         if self.target_update_counter > UPDATE_TARGET_EVERY_X_STEPS:
-            self.target_model.set_weights(self.model.get_weights())
+            self.behaviour_model.set_weights(self.target_model.get_weights())
             self.target_update_counter = 0
 
         return loss
@@ -90,9 +90,9 @@ class DQNAgent:
         return self.target_model(state)
 
     @tf.function
-    def model_predict(self, state):
+    def behaviour_predict(self, state):
         #return tf.numpy_function(lambda s: self.model(s), [state], tf.float32)
-        return self.model(state)
+        return self.behaviour_model(state)
 
     '''
     def my_numpy_func(self, state):
@@ -109,23 +109,23 @@ class DQNAgent:
     @tf.function
     def gradient_train(self, old_states, target_q, one_hot_actions):
         with tf.GradientTape() as tape:
-            q_values = self.model(old_states)
+            q_values = self.target_model(old_states)
             current_q = tf.reduce_sum(tf.multiply(q_values, one_hot_actions), axis=1)
             loss = losses.Huber()(target_q, current_q)
 
-        variables = self.model.trainable_variables
+        variables = self.target_model.trainable_variables
         gradients = tape.gradient(loss, variables)
         zipped = zip(gradients, variables)
-        self.model.optimizer.apply_gradients(zipped)
+        self.target_model.optimizer.apply_gradients(zipped)
 
         return loss
 
     def get_qs(self, state):
-        return self.model_predict(np.array(state).reshape(-1, *state.shape))
+        return self.behaviour_predict(np.array(state).reshape(-1, *state.shape))
 
     def save_model(self, name_appendix):
         try:
-            self.model.save(f'{self.model_folder}/{self.model_name}_{name_appendix}')
+            self.target_model.save(f'{self.model_folder}/{self.model_name}_{name_appendix}')
         except Exception as ex:
             print("[SEVERE] Exception raised while saving: ")
             print(ex)
@@ -134,4 +134,4 @@ class DQNAgent:
         input_size = (1, RGB_CAMERA_IM_HEIGHT, RGB_CAMERA_IM_WIDTH, RGBCamera.get_number_of_channels())
         X = np.random.uniform(size=input_size).astype(np.float32)
         y = np.random.uniform(size=(1, self.number_of_actions)).astype(np.float32)
-        self.model.fit(X, y, verbose=False, batch_size=1)
+        self.behaviour_model.fit(X, y, verbose=False, batch_size=1)
