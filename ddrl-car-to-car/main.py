@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
             while not done:
 
-                #step_start_time = time.time()
+                step_start_time = time.time()
 
                 if np.random.random() > epsilon:
                     action = np.argmax(agent.get_qs(current_state))
@@ -109,11 +109,11 @@ if __name__ == '__main__':
                     episode_losses.append(loss)
 
                 #if agent.replay_memory.has_enough_values():
-                    #step_elapsed_time = time.time() - step_start_time
+                step_elapsed_time = time.time() - step_start_time
                     #step_times.append(step_elapsed_time)
 
-                # if STEP_TIME_SECONDS > step_elapsed_time:
-                    # time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
+                if STEP_TIME_SECONDS > step_elapsed_time:
+                    time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
             end = time.time()
             time_elapsed = end - start
