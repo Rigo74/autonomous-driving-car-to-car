@@ -138,3 +138,37 @@ class Cnn64x3(object):
         model.compile(optimizer=Adam(lr=0.0004), loss="huber_loss")
 
         return model
+
+class Cnn64x3_Conv3D(object):
+
+    @staticmethod
+    def get_model_name():
+        return "Cnn64x3_Conv3D"
+
+    @staticmethod
+    def create_model(number_of_actions):
+        model = Sequential()
+
+        model.add(Lambda(lambda layer: layer / 255, input_shape=(4, 120, 160, 3)))
+
+        model.add(Conv3D(64, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Activation('relu'))
+        model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
+
+        model.add(Conv3D(32, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Activation('relu'))
+        model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
+
+        model.add(Conv3D(16, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Activation('relu'))
+        model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
+
+        model.add(Flatten())
+
+        model.add(Dense(64, activation="relu", kernel_initializer=VarianceScaling(scale=2.0)))
+
+        model.add(Dense(number_of_actions, activation="linear", kernel_initializer=VarianceScaling(scale=2.0)))
+
+        model.compile(optimizer=Adam(lr=0.0004), loss="huber_loss")
+
+        return model

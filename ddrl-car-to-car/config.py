@@ -10,9 +10,9 @@ IMG_DIMENSION = (
     RGBCamera.get_number_of_channels()
 )
 
-THROTTLE = [0, 0.5, 1]
-STEER = [-1, -0.5, 0, 0.5, 1]
-BRAKE = [0, 0.5, 1]
+THROTTLE = [0, 1]  # [0, 0.5, 1]
+STEER = [-1, 0, 1]  # [-1, -0.5, 0, 0.5, 1]
+BRAKE = [0, 1]  # [0, 0.5, 1]
 
 MINIMUM_SPEED_LIMIT_PERCENTAGE = 0.70
 MAX_STOPPED_SECONDS_ALLOWED = 3
