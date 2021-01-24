@@ -155,11 +155,11 @@ class Cnn64x3_Conv3D(object):
         model.add(Activation('relu'))
         model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
 
-        model.add(Conv3D(32, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Conv3D(64, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))
         model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
 
-        model.add(Conv3D(16, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Conv3D(64, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))
         model.add(AveragePooling3D(pool_size=(5, 5, 5), strides=(3, 3, 3), padding='same'))
 

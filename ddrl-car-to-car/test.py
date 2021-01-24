@@ -17,7 +17,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "models/Cnn64x3_1608968982_2200ep_0.214415618158275eps___15.70max____3.47avg__-14.50min"
+model_name = "models/Cnn64x3_1611342485/Cnn64x3_1611342485_3300ep_0.1eps__154.30max___39.31avg___-1.00min"
 
 if __name__ == '__main__':
 
@@ -35,13 +35,18 @@ if __name__ == '__main__':
         env.move_view_to_vehicle_position()
         # env.vehicle.move(throttle=1.0)
 
+        # for i in range(0, 10):
         while True:
+            step_start_time = time.time()
             state = env.get_current_state()
-            choices = model.predict(np.array(state).reshape(-1, *state.shape)/255.0, PREDICTION_BATCH_SIZE)
+            choices = model(np.array(state).reshape(-1, *state.shape))
             choice = np.argmax(choices)
             action = env.do_action(choice)
             print(f"{choice} -> {action}")
-            env.move_view_to_vehicle_position()
+            step_elapsed_time = time.time() - step_start_time
+            print(step_elapsed_time)
+            if STEP_TIME_SECONDS > step_elapsed_time:
+                time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
     except Exception as ex:
         print("[SEVERE] Exception raised: ")

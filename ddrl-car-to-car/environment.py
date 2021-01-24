@@ -55,7 +55,7 @@ class CarlaEnvironment:
         self.actor_list.append(self.vehicle.vehicle_actor)
 
         self.vehicle.stay_still()
-        #self.front_camera.data.clear()
+        self.front_camera.data.clear()
         self.attach_sensor_to_vehicle(self.front_camera)
 
         self.collision_detector.data.clear()
@@ -70,7 +70,9 @@ class CarlaEnvironment:
 
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
-            time.sleep(0.01)
+            time.sleep(0.1)
+        while len(self.front_camera.data) < self.front_camera.data.maxlen:
+            time.sleep(0.1)
 
     def attach_sensor_to_vehicle(self, sensor):
         self.carla_world.attach_sensor_to_vehicle(self.vehicle, sensor)
@@ -101,7 +103,6 @@ class CarlaEnvironment:
             reward = CRASH
             # print(f"[CRASH] {CRASH}")
         else:
-
             speed_reward = self.evaluate_speed_reward(
                 current_speed=current_speed,
                 speed_limit=speed_limit,
@@ -120,7 +121,7 @@ class CarlaEnvironment:
             if len(self.lane_invasion_detector.data) > 0:
                 done, crossing_line_reward = self.evaluate_crossing_line_reward()
                 # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
-                reward += crossing_line_reward
+                reward = crossing_line_reward if done else (reward + crossing_line_reward)
             else:
                 reward += CORRECT_SIDE_ROAD
 
