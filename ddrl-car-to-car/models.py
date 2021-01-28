@@ -17,6 +17,8 @@ def create_model_from_name(model_name, number_of_actions):
         return Cnn4LayersWithSpeed.create_model(number_of_actions)
     elif model_name == Cnn64x3.get_model_name():
         return Cnn64x3.create_model(number_of_actions)
+    elif model_name == Cnn64x3_Conv3D.get_model_name():
+        return Cnn64x3_Conv3D.create_model(number_of_actions)
     else:
         raise ValueError(f"The chosen model ({model_name}) is not available")
 
@@ -149,7 +151,7 @@ class Cnn64x3_Conv3D(object):
     def create_model(number_of_actions):
         model = Sequential()
 
-        model.add(Lambda(lambda layer: layer / 255, input_shape=(4, 120, 160, 3)))
+        model.add(Lambda(lambda layer: layer / 255, input_shape=(2, 120, 160, 3)))
 
         model.add(Conv3D(64, (3, 3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
         model.add(Activation('relu'))

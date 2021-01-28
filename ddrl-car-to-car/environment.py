@@ -2,12 +2,9 @@ import carla
 import time
 import math
 import random
-import numpy as np
-from carla import TrafficLightState
 
 from carla_utils.world import World
 from carla_utils.actors import CollisionDetector, LaneInvasionDetector
-from carla_utils.config import *
 from config import *
 from rewards import *
 
@@ -20,6 +17,9 @@ def create_actions_list():
         for b in BRAKE:
             actions.add((0, s, b))
     return list(actions)
+
+
+TURN_THRESHOLD = 0.75
 
 
 class CarlaEnvironment:
@@ -50,12 +50,15 @@ class CarlaEnvironment:
         if change_map:
             self.carla_world.load_map()
 
-        vehicle_location = random.choice(self.carla_world.world.get_map().get_spawn_points())
+        sps = self.carla_world.get_spawn_points()
+        vehicle_location = random.choice(sps) if random.random() > TURN_THRESHOLD \
+            else sps[random.choice(self.carla_world.get_turns_spawn_points_indexes())]
+
         self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
         self.actor_list.append(self.vehicle.vehicle_actor)
 
         self.vehicle.stay_still()
-        self.front_camera.data.clear()
+        # self.front_camera.data.clear()
         self.attach_sensor_to_vehicle(self.front_camera)
 
         self.collision_detector.data.clear()
@@ -71,8 +74,8 @@ class CarlaEnvironment:
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
             time.sleep(0.1)
-        while len(self.front_camera.data) < self.front_camera.data.maxlen:
-            time.sleep(0.1)
+        #while len(self.front_camera.data) < self.front_camera.data.maxlen:
+            #time.sleep(0.1)
 
     def attach_sensor_to_vehicle(self, sensor):
         self.carla_world.attach_sensor_to_vehicle(self.vehicle, sensor)

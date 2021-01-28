@@ -17,7 +17,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "models/Cnn64x3_1611342485/Cnn64x3_1611342485_3300ep_0.1eps__154.30max___39.31avg___-1.00min"
+model_name = "models/Cnn64x3_1611774663/Cnn64x3_1611774663_7300ep_0.1eps___71.00max___24.98avg____4.20min"
 
 if __name__ == '__main__':
 
@@ -38,8 +38,8 @@ if __name__ == '__main__':
         # for i in range(0, 10):
         while True:
             step_start_time = time.time()
-            state = env.get_current_state()
-            choices = model(np.array(state).reshape(-1, *state.shape))
+            state = np.array(env.get_current_state())
+            choices = model(state.reshape(-1, *state.shape))
             choice = np.argmax(choices)
             action = env.do_action(choice)
             print(f"{choice} -> {action}")

@@ -57,13 +57,58 @@ class RGBCamera(Sensor):
 
     def __init__(self, blueprint_library, location, attributes=[],
                  im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
-                 im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
-                 im_history_len=DEFAULT_RGB_CAMERA_HISTORY_LENGTH):
+                 im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT):
         super().__init__(blueprint_library, self.MODEL, location, attributes)
         self.im_height = im_height
         self.im_width = im_width
-        self.data = deque(maxlen=im_history_len)
+        self.data = []
         self.channels = RGBCamera.get_number_of_channels()
+
+    @staticmethod
+    def create(blueprint_library, location,
+               im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+               im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
+               fov=DEFAULT_RGB_CAMERA_FOV):
+        attributes = [
+            ("image_size_x", f"{im_width}"),
+            ("image_size_y", f"{im_height}"),
+            ("fov", f"{fov}")
+        ]
+        return RGBCamera(
+            blueprint_library=blueprint_library,
+            location=location,
+            attributes=attributes,
+            im_width=im_width,
+            im_height=im_height
+        )
+
+    @staticmethod
+    def create_default(blueprint_library, location):
+        return RGBCamera.create(blueprint_library, location)
+
+    @staticmethod
+    def get_number_of_channels():
+        return 3
+
+    # Override
+    def callback(self, image):
+        i = np.array(image.raw_data)
+        i2 = i.reshape((self.im_height, self.im_width, 4))
+        i3 = i2[:, :, :3]
+        if self.SHOW_CAM:
+            cv2.imshow("", i3)
+            cv2.waitKey(1)
+        self.data = i3
+
+
+class RGBCameraMultiplePhoto(RGBCamera):
+
+    def __init__(self, blueprint_library, location, attributes=[],
+                 im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+                 im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
+                 im_history_len=DEFAULT_RGB_CAMERA_HISTORY_LENGTH):
+        super().__init__(blueprint_library, location, attributes, im_width, im_height)
+        self.data = deque(maxlen=im_history_len)
 
     @staticmethod
     def create(blueprint_library, location,
@@ -76,7 +121,7 @@ class RGBCamera(Sensor):
             ("image_size_y", f"{im_height}"),
             ("fov", f"{fov}")
         ]
-        return RGBCamera(
+        return RGBCameraMultiplePhoto(
             blueprint_library=blueprint_library,
             location=location,
             attributes=attributes,
@@ -87,11 +132,7 @@ class RGBCamera(Sensor):
 
     @staticmethod
     def create_default(blueprint_library, location):
-        return RGBCamera.create(blueprint_library, location)
-
-    @staticmethod
-    def get_number_of_channels():
-        return 3
+        return RGBCameraMultiplePhoto.create(blueprint_library, location)
 
     # Override
     def callback(self, image):

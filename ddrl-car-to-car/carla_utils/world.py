@@ -12,10 +12,11 @@ class World:
         self.world = self.client.reload_world()  # self.client.get_world()
         self.world.set_weather(carla.WeatherParameters.ClearNoon)
         self.blueprint_library = self.world.get_blueprint_library()
+        self.map_name = self.world.get_map().name
 
     def load_map(self, map_name="Town01", random_choice=True):
-        map_chosen = random.choice(self.client.get_available_maps()) if random_choice else map_name
-        self.world = self.client.load_world(map_chosen)
+        self.map_name = random.choice(self.client.get_available_maps()) if random_choice else map_name
+        self.world = self.client.load_world(self.map_name)
         self.world.set_weather(carla.WeatherParameters.ClearNoon)
 
     def create_vehicle(self, position, model=config.DEFAULT_VEHICLE_MODEL):
@@ -37,3 +38,11 @@ class World:
 
     def get_map(self):
         return self.world.get_map()
+
+    def get_turns_spawn_points_indexes(self):
+        if self.map_name in config.TOWNS_TURNS_SP:
+            return config.TOWNS_TURNS_SP[self.map_name]
+        return self.get_spawn_points()
+
+    def get_spawn_points(self):
+        return self.get_map().get_spawn_points()

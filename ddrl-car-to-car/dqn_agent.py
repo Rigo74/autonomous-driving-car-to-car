@@ -121,7 +121,8 @@ class DQNAgent:
         return loss
 
     def get_qs(self, state):
-        return self.behaviour_predict(np.array(state).reshape(-1, *state.shape))
+        state_np = np.array(state)
+        return self.behaviour_predict(state_np.reshape(-1, *state_np.shape))
 
     def save_model(self, name_appendix):
         try:

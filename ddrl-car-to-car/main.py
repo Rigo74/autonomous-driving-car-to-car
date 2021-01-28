@@ -39,7 +39,7 @@ if __name__ == '__main__':
     max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
 
-    #step_times = []
+    step_times = []
 
     last_x_episodes_rewards = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
     last_x_episodes_rewards.append(MIN_REWARD)
@@ -54,12 +54,13 @@ if __name__ == '__main__':
     ))
     agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
     agent.load_model(trained_model_name)
-    agent.initialize_training_variables()
+    # agent.initialize_training_variables()
 
     try:
         # Initialize predictions - first prediction takes longer as of initialization that has to be done
         # It's better to do a first prediction then before we start iterating over episode steps
         agent.get_qs(np.ones((
+            #env.front_camera.data.maxlen,
             env.front_camera.im_height,
             env.front_camera.im_width,
             env.front_camera.channels
@@ -70,7 +71,7 @@ if __name__ == '__main__':
             episode_reward = 0
 
             env.reset()
-            # env.move_view_to_vehicle_position()
+            #env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
 
             done = False
@@ -162,7 +163,7 @@ if __name__ == '__main__':
 
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
 
-        #over = [s for s in step_times if s >= 0.1]
+        #over = [s for s in step_times if s >= 0.05]
         #print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
         #print(f"[STEP_TIME_OVER] avg: {np.mean(over)} min: {min(over)} max: {max(over)} count: {len(over)}")
         #print(over)

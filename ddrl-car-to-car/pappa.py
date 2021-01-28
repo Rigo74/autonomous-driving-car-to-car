@@ -1,10 +1,11 @@
-import numpy as np
 import os
+import time
+import carla
+
+from carla_utils.world import World
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
-from dqn_parameters import *
-from models import Cnn64x3_Conv3D
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -14,15 +15,19 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model = Cnn64x3_Conv3D.create_model(10)
-
-#images = np.ones(shape=(4, 120, 160, 3))
-# y = np.array(np.ones(shape=12))
-
-#print(model(np.array(images).reshape(-1, *images.shape)))
-
-model.summary()
-
-print("---------------------------------------------------------------------")
-
-Cnn64x3.create_model(10).summary()
+world = World()
+spawn_points = world.get_turns_spawn_points_indexes()
+print(world.map_name)
+print(f"count: {len(spawn_points)}")
+print(spawn_points)
+'''
+for i, sp in enumerate(spawn_points):
+    vehicle = world.create_vehicle(position=sp)
+    spectator = world.world.get_spectator()
+    transform = vehicle.vehicle_actor.get_transform()
+    spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
+    print(i)
+    print("---------------------------")
+    time.sleep(3)
+    vehicle.vehicle_actor.destroy()
+'''
