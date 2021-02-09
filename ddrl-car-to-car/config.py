@@ -3,11 +3,12 @@ from carla_utils.actors import RGBCamera
 RGB_CAMERA_FOV = 110
 RGB_CAMERA_IM_WIDTH = 160  # 640
 RGB_CAMERA_IM_HEIGHT = 120  # 480
+RGB_CAMERA_HISTORY = 4
 
 IMG_DIMENSION = (
+    RGBCamera.get_number_of_channels() * RGB_CAMERA_HISTORY,
     RGB_CAMERA_IM_HEIGHT,
-    RGB_CAMERA_IM_WIDTH,
-    RGBCamera.get_number_of_channels()
+    RGB_CAMERA_IM_WIDTH
 )
 
 THROTTLE = [0, 1]  # [0, 0.5, 1]

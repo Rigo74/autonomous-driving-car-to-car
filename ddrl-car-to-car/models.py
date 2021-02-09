@@ -119,15 +119,15 @@ class Cnn64x3(object):
 
         model.add(Lambda(lambda layer: layer / 255, input_shape=IMG_DIMENSION))
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0), data_format="channels_first"))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Conv2D(32, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0), data_format="channels_first"))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
+        model.add(Conv2D(16, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0), data_format="channels_first"))
         model.add(Activation('relu'))
         model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
 
@@ -140,6 +140,7 @@ class Cnn64x3(object):
         model.compile(optimizer=Adam(lr=0.0004), loss="huber_loss")
 
         return model
+
 
 class Cnn64x3_Conv3D(object):
 

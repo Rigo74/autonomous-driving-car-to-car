@@ -138,11 +138,10 @@ class RGBCameraMultiplePhoto(RGBCamera):
     def callback(self, image):
         i = np.array(image.raw_data)
         i2 = i.reshape((self.im_height, self.im_width, 4))
-        i3 = i2[:, :, :3]
         if self.SHOW_CAM:
-            cv2.imshow("", i3)
+            cv2.imshow("", i2[:, :, :3])
             cv2.waitKey(1)
-        self.data.append(i3)
+        self.data.append([i2[:, :, i] for i in range(0, 3)])  # 4, 3, h, w
 
 
 class CollisionDetector(Sensor):

@@ -1,5 +1,6 @@
 import gc
 import os
+import traceback
 from collections import deque
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -27,7 +28,7 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None  # "Cnn4Layers_1607586908_18200ep_0.1eps____3.00max___-0.61avg___-3.00min"
+trained_model_name = None  # "Cnn64x3_1611858527/Cnn64x3_1611858527_7400ep_0.1eps___28.75max____6.14avg____0.80min"
 
 if __name__ == '__main__':
 
@@ -50,7 +51,8 @@ if __name__ == '__main__':
     env = CarlaEnvironment(camera_config=(
         RGB_CAMERA_IM_WIDTH,
         RGB_CAMERA_IM_HEIGHT,
-        RGB_CAMERA_FOV
+        RGB_CAMERA_FOV,
+        RGB_CAMERA_HISTORY
     ))
     agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
     agent.load_model(trained_model_name)
@@ -60,10 +62,10 @@ if __name__ == '__main__':
         # Initialize predictions - first prediction takes longer as of initialization that has to be done
         # It's better to do a first prediction then before we start iterating over episode steps
         agent.get_qs(np.ones((
-            #env.front_camera.data.maxlen,
+            env.front_camera.data.maxlen,
+            env.front_camera.channels,
             env.front_camera.im_height,
-            env.front_camera.im_width,
-            env.front_camera.channels
+            env.front_camera.im_width
         )))
 
         for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
@@ -71,7 +73,7 @@ if __name__ == '__main__':
             episode_reward = 0
 
             env.reset()
-            #env.move_view_to_vehicle_position()
+            env.move_view_to_vehicle_position()
             current_state = env.get_current_state()
 
             done = False
@@ -170,6 +172,7 @@ if __name__ == '__main__':
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)
+        traceback.print_exc()
         env.destroy()
     finally:
         print("Terminated")

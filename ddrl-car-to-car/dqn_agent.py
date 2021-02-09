@@ -16,6 +16,13 @@ MODELS_FOLDER = "models"
 LOGS_FOLDER = "logs"
 
 
+def reshape(state, add_external_array=True):
+    state_np = np.asarray(state)
+    shape = state_np.shape
+    temp = (shape[0] * shape[1], shape[2], shape[3])
+    return state_np.reshape((-1, *temp) if add_external_array else temp)
+
+
 class DQNAgent:
     def __init__(self, model_name, number_of_actions):
         self.number_of_actions = number_of_actions
@@ -64,8 +71,8 @@ class DQNAgent:
 
         batch = self.replay_memory.get_random_samples(MINI_BATCH_SIZE)
 
-        old_states = np.asarray([sample.old_state for sample in batch])
-        new_states = np.asarray([sample.new_state for sample in batch])
+        old_states = np.asarray([reshape(sample.old_state, False) for sample in batch])
+        new_states = np.asarray([reshape(sample.new_state, False) for sample in batch])
         actions = np.asarray([sample.action for sample in batch])
         rewards = np.asarray([sample.reward for sample in batch])
         is_done = np.asarray([sample.is_done for sample in batch])
@@ -86,12 +93,12 @@ class DQNAgent:
 
     @tf.function
     def target_predict(self, state):
-        #return tf.numpy_function(lambda s: self.target_model(s), [state], tf.float32)
+        # return tf.numpy_function(lambda s: self.target_model(s), [state], tf.float32)
         return self.target_model(state)
 
     @tf.function
     def behaviour_predict(self, state):
-        #return tf.numpy_function(lambda s: self.model(s), [state], tf.float32)
+        # return tf.numpy_function(lambda s: self.model(s), [state], tf.float32)
         return self.behaviour_model(state)
 
     '''
@@ -121,8 +128,7 @@ class DQNAgent:
         return loss
 
     def get_qs(self, state):
-        state_np = np.array(state)
-        return self.behaviour_predict(state_np.reshape(-1, *state_np.shape))
+        return self.behaviour_predict(reshape(np.array(state)))
 
     def save_model(self, name_appendix):
         try:
