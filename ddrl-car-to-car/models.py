@@ -4,6 +4,8 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Conv2D, Activ
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.initializers import VarianceScaling
+from tensorflow.python.keras.layers import MaxPool2D
+from tensorflow.python.keras.losses import Huber
 
 from config import *
 
@@ -115,29 +117,27 @@ class Cnn64x3(object):
 
     @staticmethod
     def create_model(number_of_actions):
-        model = Sequential()
+        inputs = Input(shape=IMG_DIMENSION)
 
-        model.add(Lambda(lambda layer: layer / 255, input_shape=IMG_DIMENSION))
+        x = Lambda(lambda layer: layer / 255)(inputs)
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
-        model.add(Activation('relu'))
-        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+        x = Conv2D(filters=32, kernel_size=(4, 4), strides=(2, 2), activation='relu', kernel_initializer=VarianceScaling(scale=2.))(x)
+        x = MaxPool2D((2, 2))(x)
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
-        model.add(Activation('relu'))
-        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+        x = Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', kernel_initializer=VarianceScaling(scale=2.))(x)
+        x = MaxPool2D((2, 2))(x)
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer=VarianceScaling(scale=2.0)))
-        model.add(Activation('relu'))
-        model.add(AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same'))
+        x = Flatten()(x)
 
-        model.add(Flatten())
+        x = Dense(128, activation='relu', kernel_initializer=VarianceScaling(scale=2.))(x)
 
-        model.add(Dense(64, activation="relu", kernel_initializer=VarianceScaling(scale=2.0)))
+        predictions = Dense(number_of_actions, activation='linear', kernel_initializer=VarianceScaling(scale=2.))(x)
 
-        model.add(Dense(number_of_actions, activation="linear", kernel_initializer=VarianceScaling(scale=2.0)))
+        model = Model(inputs=inputs, outputs=predictions)
 
-        model.compile(optimizer=Adam(lr=0.0004), loss="huber_loss")
+        model.compile(optimizer=Adam(0.0004), loss=Huber())
+
+        model.summary()
 
         return model
 

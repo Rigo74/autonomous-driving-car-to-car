@@ -28,7 +28,7 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = "Cnn64x3_1611858527/Cnn64x3_1611858527_7400ep_0.1eps___28.75max____6.14avg____0.80min"
+trained_model_name = None  # "Cnn64x3_1611858527/Cnn64x3_1611858527_7400ep_0.1eps___28.75max____6.14avg____0.80min"
 
 if __name__ == '__main__':
 
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     tf.random.set_seed(1)
 
     max_reward = average_reward = average_loss = min_reward = 0
-    epsilon = 0.5  # INITIAL_EPSILON
+    epsilon = INITIAL_EPSILON
 
     step_times = []
 
@@ -67,7 +67,7 @@ if __name__ == '__main__':
             env.front_camera.channels
         )))
 
-        for episode in tqdm(range(1 + 7400, EPISODES + 1 + 7400), ascii=True, unit='episodes'):
+        for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
             agent.tensorboard.step = episode
             episode_reward = 0
 

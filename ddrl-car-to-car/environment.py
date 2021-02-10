@@ -31,7 +31,7 @@ class CarlaEnvironment:
         self.carla_world = World()
         self.actor_list = []
         self.vehicle = None
-        self.front_camera = RGBCamera.create(
+        self.front_camera = GreyScaleCamera.create(
             self.carla_world.blueprint_library,
             carla.Location(x=2.2, z=0.7),
             im_width=camera_config[0],

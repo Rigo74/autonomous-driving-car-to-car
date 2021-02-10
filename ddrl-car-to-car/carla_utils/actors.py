@@ -144,6 +144,51 @@ class RGBCameraMultiplePhoto(RGBCamera):
         self.data.append([i2[:, :, i] for i in range(0, 3)])  # 4, 3, h, w
 
 
+class GreyScaleCamera(RGBCamera):
+
+    def __init__(self, blueprint_library, location, attributes=[],
+                 im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+                 im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT):
+        super().__init__(blueprint_library, location, attributes, im_width, im_height)
+        self.channels = GreyScaleCamera.get_number_of_channels()
+
+    @staticmethod
+    def create(blueprint_library, location,
+               im_width=DEFAULT_RGB_CAMERA_IM_WIDTH,
+               im_height=DEFAULT_RGB_CAMERA_IM_HEIGHT,
+               fov=DEFAULT_RGB_CAMERA_FOV):
+        attributes = [
+            ("image_size_x", f"{im_width}"),
+            ("image_size_y", f"{im_height}"),
+            ("fov", f"{fov}")
+        ]
+        return GreyScaleCamera(
+            blueprint_library=blueprint_library,
+            location=location,
+            attributes=attributes,
+            im_width=im_width,
+            im_height=im_height
+        )
+
+    @staticmethod
+    def create_default(blueprint_library, location):
+        return GreyScaleCamera.create(blueprint_library, location)
+
+    @staticmethod
+    def get_number_of_channels():
+        return 1
+
+    # Override
+    def callback(self, image):
+        i = np.array(image.raw_data)
+        i2 = i.reshape((self.im_height, self.im_width, 4))
+        i3 = cv2.cvtColor(i2[:, :, :3], cv2.COLOR_BGR2GRAY)
+        if self.SHOW_CAM:
+            cv2.imshow("", i3)
+            cv2.waitKey(1)
+        self.data = np.array(i3)
+
+
 class CollisionDetector(Sensor):
     MODEL = "sensor.other.collision"
 

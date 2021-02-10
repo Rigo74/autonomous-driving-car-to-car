@@ -32,7 +32,7 @@ class DQNAgent:
 
         self.replay_memory = ReplayMemory(max_len=REPLAY_MEMORY_SIZE, min_len=MIN_REPLAY_MEMORY_SIZE)
 
-        self.identifier = f"1611858527(1)"  # int(time.time())
+        self.identifier = int(time.time())
         self.model_name = f"{MODEL_NAME}_{self.identifier}"
 
         model_logs_folder = f"{LOGS_FOLDER}/{self.model_name}"
@@ -93,25 +93,11 @@ class DQNAgent:
 
     @tf.function
     def target_predict(self, state):
-        # return tf.numpy_function(lambda s: self.target_model(s), [state], tf.float32)
         return self.target_model(state)
 
     @tf.function
     def behaviour_predict(self, state):
-        # return tf.numpy_function(lambda s: self.model(s), [state], tf.float32)
         return self.behaviour_model(state)
-
-    '''
-    def my_numpy_func(self, state):
-        # x will be a numpy array with the contents of the input to the
-        # tf.function
-        return self.model.predict(state)
-
-    @tf.function#(input_signature=[tf.TensorSpec(None, tf.float32)])
-    def tf_function(self, state):
-        y = tf.numpy_function(self.my_numpy_func, [state], tf.float32)
-        return y
-    '''
 
     @tf.function
     def gradient_train(self, old_states, target_q, one_hot_actions):
