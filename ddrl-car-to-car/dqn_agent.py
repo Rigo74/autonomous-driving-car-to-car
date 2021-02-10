@@ -32,7 +32,7 @@ class DQNAgent:
 
         self.replay_memory = ReplayMemory(max_len=REPLAY_MEMORY_SIZE, min_len=MIN_REPLAY_MEMORY_SIZE)
 
-        self.identifier = int(time.time())
+        self.identifier = f"1611858527(1)"  # int(time.time())
         self.model_name = f"{MODEL_NAME}_{self.identifier}"
 
         model_logs_folder = f"{LOGS_FOLDER}/{self.model_name}"
@@ -71,8 +71,8 @@ class DQNAgent:
 
         batch = self.replay_memory.get_random_samples(MINI_BATCH_SIZE)
 
-        old_states = np.asarray([reshape(sample.old_state, False) for sample in batch])
-        new_states = np.asarray([reshape(sample.new_state, False) for sample in batch])
+        old_states = np.asarray([sample.old_state for sample in batch])
+        new_states = np.asarray([sample.new_state for sample in batch])
         actions = np.asarray([sample.action for sample in batch])
         rewards = np.asarray([sample.reward for sample in batch])
         is_done = np.asarray([sample.is_done for sample in batch])
@@ -128,7 +128,9 @@ class DQNAgent:
         return loss
 
     def get_qs(self, state):
-        return self.behaviour_predict(reshape(np.array(state)))
+        # return self.behaviour_predict(reshape(np.array(state)))
+        state_np = np.asarray(state)
+        return self.behaviour_predict(state_np.reshape(-1, *state_np.shape))
 
     def save_model(self, name_appendix):
         try:

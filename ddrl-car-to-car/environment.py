@@ -31,13 +31,12 @@ class CarlaEnvironment:
         self.carla_world = World()
         self.actor_list = []
         self.vehicle = None
-        self.front_camera = RGBCameraMultiplePhoto.create(
+        self.front_camera = RGBCamera.create(
             self.carla_world.blueprint_library,
             carla.Location(x=2.2, z=0.7),
             im_width=camera_config[0],
             im_height=camera_config[1],
-            fov=camera_config[2],
-            im_history_len=camera_config[3]
+            fov=camera_config[2]
         )
         self.collision_detector = CollisionDetector(self.carla_world.blueprint_library)
         self.lane_invasion_detector = LaneInvasionDetector(self.carla_world.blueprint_library)
@@ -59,7 +58,7 @@ class CarlaEnvironment:
         self.actor_list.append(self.vehicle.vehicle_actor)
 
         self.vehicle.stay_still()
-        self.front_camera.data.clear()
+        # self.front_camera.data.clear()
         self.attach_sensor_to_vehicle(self.front_camera)
 
         self.collision_detector.data.clear()
@@ -75,8 +74,8 @@ class CarlaEnvironment:
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
             time.sleep(0.1)
-        while len(self.front_camera.data) < self.front_camera.data.maxlen:
-            time.sleep(0.1)
+        # while len(self.front_camera.data) < self.front_camera.data.maxlen:
+            # time.sleep(0.1)
 
     def attach_sensor_to_vehicle(self, sensor):
         self.carla_world.attach_sensor_to_vehicle(self.vehicle, sensor)

@@ -6,9 +6,9 @@ RGB_CAMERA_IM_HEIGHT = 120  # 480
 RGB_CAMERA_HISTORY = 4
 
 IMG_DIMENSION = (
-    RGBCamera.get_number_of_channels() * RGB_CAMERA_HISTORY,
     RGB_CAMERA_IM_HEIGHT,
-    RGB_CAMERA_IM_WIDTH
+    RGB_CAMERA_IM_WIDTH,
+    RGBCamera.get_number_of_channels()
 )
 
 THROTTLE = [0, 1]  # [0, 0.5, 1]

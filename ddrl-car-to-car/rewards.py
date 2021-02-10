@@ -1,7 +1,7 @@
 TARGET_REACHED = 1  # nel nostro caso non avverrà mai
 # STOP_AT_INTERSECTION_RED = 0.6
 CORRECT_SIDE_ROAD = 0  # 0.5
-FORWARD = 0.2  # 0.1  # 0.4  # 0.05
+FORWARD = 0.1  # 0.2  # 0.4  # 0.05
 TURN = 0.1  # 0.1  # 0.2  # 0.03
 IN_SPEED_LIMIT = 0  # 0.1
 
