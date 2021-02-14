@@ -43,6 +43,7 @@ class CarlaEnvironment:
         self.actions = create_actions_list()
         self.last_action = (0, 0, 0)
         self.car_is_stopped_since = -1
+        self.car_is_steering_since = -1
 
     def reset(self, change_map=False):
         self.destroy()
@@ -70,6 +71,7 @@ class CarlaEnvironment:
         self.wait_environment_ready()
 
         self.car_is_stopped_since = -1
+        self.car_is_steering_since = -1
 
     def wait_environment_ready(self):
         while any(x is None for x in self.actor_list):
@@ -96,8 +98,10 @@ class CarlaEnvironment:
 
     def step(self, choice):
         action = self.do_action(choice)
+        lane_invasion_data = self.lane_invasion_detector.data.copy()
+        self.lane_invasion_detector.data.clear()
 
-        current_speed, speed_limit, min_speed_limit = self.evaluate_speed_values()
+        current_speed = self.evaluate_speed_values()
 
         reward = 0
         done = False
@@ -106,11 +110,7 @@ class CarlaEnvironment:
             reward = CRASH
             # print(f"[CRASH] {CRASH}")
         else:
-            speed_reward = self.evaluate_speed_reward(
-                current_speed=current_speed,
-                speed_limit=speed_limit,
-                min_speed_limit=min_speed_limit
-            )
+            speed_reward = self.evaluate_speed_reward()
             # print(f"[SPEED_REWARD] {speed_reward}")
             reward += speed_reward
 
@@ -121,12 +121,10 @@ class CarlaEnvironment:
             # print(f"[ACTION_REWARD] {action_reward}")
             reward += action_reward
 
-            if len(self.lane_invasion_detector.data) > 0:
+            if len(lane_invasion_data) > 0:
                 done, crossing_line_reward = self.evaluate_crossing_line_reward()
                 # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
                 reward = crossing_line_reward if done else (reward + crossing_line_reward)
-            else:
-                reward += CORRECT_SIDE_ROAD
 
         # print("---------------------------------------------------------------")
         self.last_action = action
@@ -135,48 +133,48 @@ class CarlaEnvironment:
     def evaluate_speed_values(self):
         v = self.vehicle.get_speed()
         kmh = int(3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2))
-        speed_limit = self.vehicle.get_speed_limit()
-        min_speed_limit = speed_limit * MINIMUM_SPEED_LIMIT_PERCENTAGE
         if self.car_is_stopped_since == -1 and kmh <= 0:
             self.car_is_stopped_since = time.time()
         elif kmh > 0:
             self.car_is_stopped_since = -1
-        return kmh, speed_limit, min_speed_limit
+        return kmh
 
-    def evaluate_speed_reward(self, current_speed, speed_limit, min_speed_limit):
-        if current_speed > speed_limit:
-            return OVER_SPEED_LIMIT
-        elif current_speed >= min_speed_limit:
-            return IN_SPEED_LIMIT
-
-        reward = UNDER_MINIMUM_SPEED_LIMIT if current_speed < min_speed_limit else 0
+    def evaluate_speed_reward(self):
         if self.car_is_stopped_since != -1:
             stopped_time = time.time() - self.car_is_stopped_since
             if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
-                reward += STOPPED_TOO_LONG
-        return reward
+                return STOPPED_TOO_LONG
+        return 0
 
     def evaluate_action_reward(self, current_action, current_speed):
         steer = current_action[1]
         is_opposite_turn = self.last_action[1] * steer < 0
+
+        if steer != 0:
+            if self.last_action[1] * steer > 0 and self.car_is_steering_since != -1:
+                steering_time = time.time() - self.car_is_steering_since
+                if steering_time >= MAX_STEERING_SECONDS_ALLOWED:
+                    return STEERING_TOO_LONG
+            else:
+                self.car_is_steering_since = time.time()
+        else:
+            self.car_is_steering_since = -1
+
         if current_speed > 0 and not is_opposite_turn:
             return TURN if steer != 0 else FORWARD
         else:
             return OPPOSITE_TURN if is_opposite_turn else 0
 
     def evaluate_crossing_line_reward(self):
-        lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
-                                       for x in self.lane_invasion_detector.data)
-        if lane_changes_not_allowed:
+        waypoint = self.carla_world.get_map().get_waypoint(
+            self.vehicle.get_location(),
+            project_to_road=True,
+            lane_type=(carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+        )
+        if waypoint is not None \
+                and (waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk):
             return True, OFF_ROAD
-        else:
-            return False, CORRECT_SIDE_ROAD
-
-    def is_lane_change_not_allowed(self, lane_change):
-        steer = self.last_action[1]
-        return lane_change == carla.LaneChange.NONE \
-               or (lane_change == carla.LaneChange.Right and steer < 0) \
-               or (lane_change == carla.LaneChange.Left and steer > 0)
+        return False, 0
 
     def destroy(self):
         for a in self.actor_list:
