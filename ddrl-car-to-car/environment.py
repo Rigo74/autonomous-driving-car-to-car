@@ -44,6 +44,7 @@ class CarlaEnvironment:
         self.last_action = (0, 0, 0)
         self.car_is_stopped_since = -1
         self.car_is_steering_since = -1
+        self.carla_world.load_map("Town03")
 
     def reset(self, change_map=False):
         self.destroy()
@@ -168,8 +169,8 @@ class CarlaEnvironment:
     def evaluate_crossing_line_reward(self):
         waypoint = self.carla_world.get_map().get_waypoint(
             self.vehicle.get_location(),
-            project_to_road=True,
-            lane_type=(carla.LaneType.Shoulder | carla.LaneType.Sidewalk)
+            project_to_road=None,
+            lane_type=(carla.LaneType.Driving | carla.LaneType.Sidewalk | carla.LaneType.Shoulder)
         )
         if waypoint is not None \
                 and (waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk):

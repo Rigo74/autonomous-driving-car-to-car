@@ -1,7 +1,6 @@
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import keras
 import time
 import numpy as np
 import tensorflow as tf
@@ -17,7 +16,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "models/Cnn64x3_1611858527/Cnn64x3_1611858527_25400ep_0.1eps___45.40max___24.13avg____0.25min"
+model_name = "models/Cnn64x3_1613119850/Cnn64x3_1613119850_11200ep_0.1eps___17.05max____4.96avg___-0.75min"
 
 if __name__ == '__main__':
 
@@ -30,7 +29,7 @@ if __name__ == '__main__':
 
     try:
         env.reset()
-        model = keras.models.load_model(model_name)
+        model = tf.keras.models.load_model(model_name)
 
         env.move_view_to_vehicle_position()
         # env.vehicle.move(throttle=1.0)

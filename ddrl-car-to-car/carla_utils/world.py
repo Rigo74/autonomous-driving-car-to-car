@@ -14,7 +14,7 @@ class World:
         self.blueprint_library = self.world.get_blueprint_library()
         self.map_name = self.world.get_map().name
 
-    def load_map(self, map_name="Town01", random_choice=True):
+    def load_map(self, map_name="Town03", random_choice=True):
         self.map_name = random.choice(self.client.get_available_maps()) if random_choice else map_name
         self.world = self.client.load_world(self.map_name)
         self.world.set_weather(carla.WeatherParameters.ClearNoon)
