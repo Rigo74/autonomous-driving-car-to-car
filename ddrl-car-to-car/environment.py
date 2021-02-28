@@ -33,7 +33,9 @@ class CarlaEnvironment:
         self.vehicle = None
         self.front_camera = GreyScaleCamera.create(
             self.carla_world.blueprint_library,
-            carla.Location(x=2.2, z=0.7),
+            # carla.Location(x=2.2, z=0.7),
+            # carla.Location(x=0, z=2),
+            carla.Location(x=2.2, z=1.2),
             im_width=camera_config[0],
             im_height=camera_config[1],
             fov=camera_config[2]
@@ -44,20 +46,23 @@ class CarlaEnvironment:
         self.last_action = (0, 0, 0)
         self.car_is_stopped_since = -1
         self.car_is_steering_since = -1
-        self.carla_world.load_map("Town03")
+        # self.carla_world.load_map("Town03")
 
-    def reset(self, change_map=False):
+    def reset(self, change_map=False, map_name="Town01"):
         self.destroy()
 
         if change_map:
-            self.carla_world.load_map()
+            self.carla_world.load_map(map_name=map_name, random_choice=False)
 
-        sps = self.carla_world.get_spawn_points()
-        vehicle_location = random.choice(sps) if random.random() > TURN_THRESHOLD \
-            else sps[random.choice(self.carla_world.get_turns_spawn_points_indexes())]
+        try:
+            sps = self.carla_world.get_spawn_points()
+            #vehicle_location = random.choice(sps) if random.random() > TURN_THRESHOLD \
+                #else sps[random.choice(self.carla_world.get_turns_spawn_points_indexes())]
 
-        self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
-        self.actor_list.append(self.vehicle.vehicle_actor)
+            self.vehicle = self.carla_world.create_vehicle(position=random.choice(sps))
+            self.actor_list.append(self.vehicle.vehicle_actor)
+        except Exception as ex:
+            self.reset(change_map=True)
 
         self.vehicle.stay_still()
         # self.front_camera.data.clear()
@@ -111,21 +116,22 @@ class CarlaEnvironment:
             reward = CRASH
             # print(f"[CRASH] {CRASH}")
         else:
-            speed_reward = self.evaluate_speed_reward()
+            done, speed_reward = self.evaluate_speed_reward()
             # print(f"[SPEED_REWARD] {speed_reward}")
             reward += speed_reward
 
-            action_reward = self.evaluate_action_reward(
-                current_action=action,
-                current_speed=current_speed
-            )
-            # print(f"[ACTION_REWARD] {action_reward}")
-            reward += action_reward
+            if not done:
+                action_reward = self.evaluate_action_reward(
+                    current_action=action,
+                    current_speed=current_speed
+                )
+                # print(f"[ACTION_REWARD] {action_reward}")
+                reward += action_reward
 
-            if len(lane_invasion_data) > 0:
-                done, crossing_line_reward = self.evaluate_crossing_line_reward()
-                # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
-                reward = crossing_line_reward if done else (reward + crossing_line_reward)
+                if len(lane_invasion_data) > 0:
+                    done, crossing_line_reward = self.evaluate_crossing_line_reward(lane_invasion_data)
+                    # print(f"[CROSSING_LINE_REWARD] {crossing_line_reward}")
+                    reward = crossing_line_reward if done else (reward + crossing_line_reward)
 
         # print("---------------------------------------------------------------")
         self.last_action = action
@@ -143,14 +149,17 @@ class CarlaEnvironment:
     def evaluate_speed_reward(self):
         if self.car_is_stopped_since != -1:
             stopped_time = time.time() - self.car_is_stopped_since
-            if stopped_time >= MAX_STOPPED_SECONDS_ALLOWED:
-                return STOPPED_TOO_LONG
-        return 0
+            if MAX_STOPPED_SECONDS_ALLOWED <= stopped_time < END_EPISODE_AFTER_STOPPED_SECONDS:
+                return False, STOPPED_TOO_LONG
+            elif stopped_time >= END_EPISODE_AFTER_STOPPED_SECONDS:
+                return True, -1
+        return False, 0
 
     def evaluate_action_reward(self, current_action, current_speed):
         steer = current_action[1]
         is_opposite_turn = self.last_action[1] * steer < 0
 
+        '''
         if steer != 0:
             if self.last_action[1] * steer > 0 and self.car_is_steering_since != -1:
                 steering_time = time.time() - self.car_is_steering_since
@@ -160,22 +169,32 @@ class CarlaEnvironment:
                 self.car_is_steering_since = time.time()
         else:
             self.car_is_steering_since = -1
+        '''
 
-        if current_speed > 0 and not is_opposite_turn:
+        if current_speed > 2 and not is_opposite_turn:
             return TURN if steer != 0 else FORWARD
         else:
             return OPPOSITE_TURN if is_opposite_turn else 0
 
-    def evaluate_crossing_line_reward(self):
-        waypoint = self.carla_world.get_map().get_waypoint(
-            self.vehicle.get_location(),
-            project_to_road=None,
-            lane_type=(carla.LaneType.Driving | carla.LaneType.Sidewalk | carla.LaneType.Shoulder)
-        )
-        if waypoint is not None \
-                and (waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk):
-            return True, OFF_ROAD
+    def evaluate_crossing_line_reward(self, lane_invasion_data):
+        lane_changes_not_allowed = any(self.is_lane_change_not_allowed(x.lane_change)
+                                       for x in lane_invasion_data)
+        if lane_changes_not_allowed:
+            waypoint = self.carla_world.get_map().get_waypoint(
+                self.vehicle.get_location(),
+                project_to_road=True,
+                lane_type=(carla.LaneType.Driving | carla.LaneType.Sidewalk | carla.LaneType.Shoulder)
+            )
+            if waypoint is not None \
+                    and (waypoint.lane_type == carla.LaneType.Shoulder or waypoint.lane_type == carla.LaneType.Sidewalk):
+                return True, OFF_ROAD
         return False, 0
+
+    def is_lane_change_not_allowed(self, lane_change):
+        steer = self.last_action[1]
+        return lane_change == carla.LaneChange.NONE \
+               or (lane_change == carla.LaneChange.Right and steer < 0) \
+               or (lane_change == carla.LaneChange.Left and steer > 0)
 
     def destroy(self):
         for a in self.actor_list:

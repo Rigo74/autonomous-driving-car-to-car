@@ -28,7 +28,7 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None  # "Cnn64x3_1613119850/Cnn64x3_1613119850_11200ep_0.1eps___17.05max____4.96avg___-0.75min"
+trained_model_name = None  # "Cnn64x3_1614366366/Cnn64x3_1614366366_7600ep_0.1eps___50.00max___-8.42avg__-36.10min"
 
 if __name__ == '__main__':
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     max_reward = average_reward = average_loss = min_reward = 0
     epsilon = INITIAL_EPSILON
 
-    step_times = []
+    # step_times = []
 
     last_x_episodes_rewards = deque(maxlen=AGGREGATE_STATS_EVERY_X_EPISODES)
     last_x_episodes_rewards.append(MIN_REWARD)
@@ -54,6 +54,7 @@ if __name__ == '__main__':
         RGB_CAMERA_FOV,
         RGB_CAMERA_HISTORY
     ))
+
     agent = DQNAgent(MODEL_NAME, env.get_number_of_actions())
     agent.load_model(trained_model_name)
     # agent.initialize_training_variables()
@@ -114,6 +115,7 @@ if __name__ == '__main__':
                 step_elapsed_time = time.time() - step_start_time
                     #step_times.append(step_elapsed_time)
 
+                # print(step_elapsed_time)
                 if STEP_TIME_SECONDS > step_elapsed_time:
                     time.sleep(STEP_TIME_SECONDS - step_elapsed_time)
 
@@ -163,11 +165,13 @@ if __name__ == '__main__':
             gc.collect()
 
         agent.save_model(generate_model_name_appendix(max_reward, average_reward, min_reward, agent.tensorboard.step, epsilon))
-
-        #over = [s for s in step_times if s >= 0.05]
-        #print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)}")
-        #print(f"[STEP_TIME_OVER] avg: {np.mean(over)} min: {min(over)} max: {max(over)} count: {len(over)}")
-        #print(over)
+        '''
+        over = [s for s in step_times if s > 0.05]
+        print(f"[STEP_TIME] avg: {np.mean(step_times)} min: {min(step_times)} max: {max(step_times)} count: {len(step_times)}")
+        print(f"[STEP_TIME_OVER] avg: {np.mean(over)} min: {min(over)} max: {max(over)} count: {len(over)}")
+        print(over)
+        print(len(over)*100/len(step_times))
+        '''
     except Exception as ex:
         print("[SEVERE] Exception raised: ")
         print(ex)

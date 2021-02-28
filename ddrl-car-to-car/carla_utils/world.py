@@ -1,5 +1,6 @@
 import carla
 import random
+import time
 from carla_utils import config
 from carla_utils.actors import Vehicle
 
@@ -9,7 +10,10 @@ class World:
     def __init__(self, host=config.HOST, port=config.PORT):
         self.client = carla.Client(host, port)
         self.client.set_timeout(config.CLIENT_TIMEOUT)
-        self.world = self.client.reload_world()  # self.client.get_world()
+        # self.world = self.client.reload_world()  # self.client.get_world()
+        self.world = self.client.load_world("Town01")
+        time.sleep(2)
+        self.world = self.client.reload_world()
         self.world.set_weather(carla.WeatherParameters.ClearNoon)
         self.blueprint_library = self.world.get_blueprint_library()
         self.map_name = self.world.get_map().name

@@ -8,6 +8,7 @@ from tensorflow.python.keras.layers import MaxPool2D
 from tensorflow.python.keras.losses import Huber
 
 from config import *
+from dqn_parameters import *
 
 
 def create_model_from_name(model_name, number_of_actions):
@@ -135,9 +136,7 @@ class Cnn64x3(object):
 
         model = Model(inputs=inputs, outputs=predictions)
 
-        model.compile(optimizer=Adam(0.0004), loss=Huber())
-
-        model.summary()
+        model.compile(optimizer=Adam(0.00035), loss=Huber())
 
         return model
 

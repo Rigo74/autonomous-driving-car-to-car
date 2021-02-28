@@ -2,7 +2,7 @@ import os
 import time
 import carla
 import numpy as np
-'''
+
 from carla_utils.world import World
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -17,7 +17,7 @@ if gpus:
         print(e)
 
 world = World()
-spawn_points = world.get_turns_spawn_points_indexes()
+spawn_points = world.get_spawn_points()
 print(world.map_name)
 print(f"count: {len(spawn_points)}")
 print(spawn_points)
@@ -128,3 +128,4 @@ b = [
         [1,1,1,1,1,1],[1,1,1,1,1,1],[1,1,1,1,1,1],[1,1,1,1,1,1],[1,1,1,1,1,1]
     ],
 ]
+'''

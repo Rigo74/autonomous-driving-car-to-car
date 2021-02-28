@@ -1,3 +1,4 @@
+import time
 from collections import deque
 
 import numpy as np
@@ -184,7 +185,8 @@ class GreyScaleCamera(RGBCamera):
         i2 = i.reshape((self.im_height, self.im_width, 4))
         i3 = cv2.cvtColor(i2[:, :, :3], cv2.COLOR_BGR2GRAY)
         if self.SHOW_CAM:
-            cv2.imshow("", i3)
+            # cv2.imwrite(f"images/{time.time()}.png", i3)
+            # cv2.imshow("", i3)
             cv2.waitKey(1)
         self.data = np.array(i3)
 
