@@ -19,7 +19,7 @@ def create_actions_list():
     return list(actions)
 
 
-TURN_THRESHOLD = 0.75
+TURN_THRESHOLD = 0.5
 
 
 class CarlaEnvironment:
@@ -56,10 +56,10 @@ class CarlaEnvironment:
 
         try:
             sps = self.carla_world.get_spawn_points()
-            #vehicle_location = random.choice(sps) if random.random() > TURN_THRESHOLD \
-                #else sps[random.choice(self.carla_world.get_turns_spawn_points_indexes())]
+            vehicle_location = random.choice(sps) if random.random() > TURN_THRESHOLD \
+                else sps[random.choice(self.carla_world.get_turns_spawn_points_indexes())]
 
-            self.vehicle = self.carla_world.create_vehicle(position=random.choice(sps))
+            self.vehicle = self.carla_world.create_vehicle(position=vehicle_location)
             self.actor_list.append(self.vehicle.vehicle_actor)
         except Exception as ex:
             self.reset(change_map=True)

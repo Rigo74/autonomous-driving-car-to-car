@@ -5,7 +5,8 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.initializers import VarianceScaling
 from tensorflow.python.keras.layers import MaxPool2D
-from tensorflow.python.keras.losses import Huber
+from tensorflow.python.keras.losses import Huber, MeanSquaredError, MSE
+from tensorflow.keras.regularizers import L2
 
 from config import *
 from dqn_parameters import *

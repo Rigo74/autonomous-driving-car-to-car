@@ -16,7 +16,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-model_name = "models/Cnn64x3_1614366366/Cnn64x3_1614366366_7600ep_0.1eps___50.00max___-8.42avg__-36.10min"
+model_name = "models/Cnn64x3_1614542449/Cnn64x3_1614542449_8300ep_0.1eps___74.80max____3.12avg__-12.70min"
 
 if __name__ == '__main__':
 
@@ -32,7 +32,8 @@ if __name__ == '__main__':
         model = tf.keras.models.load_model(model_name)
 
         env.move_view_to_vehicle_position()
-        # env.vehicle.move(throttle=1.0)
+        env.vehicle.move(throttle=0.5)
+        time.sleep(2)
 
         # for i in range(0, 10):
         while True:

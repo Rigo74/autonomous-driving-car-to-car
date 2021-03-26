@@ -22,8 +22,8 @@ print(world.map_name)
 print(f"count: {len(spawn_points)}")
 print(spawn_points)
 
-for i, sp in enumerate(spawn_points):
-    vehicle = world.create_vehicle(position=sp)
+for i in world.get_turns_spawn_points_indexes():
+    vehicle = world.create_vehicle(position=spawn_points[i])
     spectator = world.world.get_spectator()
     transform = vehicle.vehicle_actor.get_transform()
     spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50), carla.Rotation(pitch=-90)))

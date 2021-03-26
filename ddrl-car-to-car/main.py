@@ -28,7 +28,7 @@ def generate_model_name_appendix(max_reward, average_reward, min_reward, episode
     return f"{episode}ep_{epsilon}eps_{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min"
 
 
-trained_model_name = None  # "Cnn64x3_1614366366/Cnn64x3_1614366366_7600ep_0.1eps___50.00max___-8.42avg__-36.10min"
+trained_model_name = None  # "Cnn64x3_1614628315/Cnn64x3_1614628315_10400ep_0.1eps__172.40max___23.56avg__-12.70min"
 
 if __name__ == '__main__':
 
